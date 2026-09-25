@@ -1,0 +1,5 @@
+<resources>
+    <color name="ic_launcher_background">#1B8A5A</color>
+    <color name="ns_primary">#1B8A5A</color>
+    <color name="ns_on_primary">#FFFFFF</color>
+</resources>
