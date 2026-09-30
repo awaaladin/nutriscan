@@ -2,7 +2,11 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
+import dj_database_url
+from dotenv import load_dotenv
+
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
 
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-secret-key-change-in-production")
 DEBUG = os.environ.get("DJANGO_DEBUG", "True") == "True"
@@ -57,11 +61,18 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 if os.environ.get("USE_SQLITE") == "1":
     # Convenience toggle for local dev/tests without a running Postgres instance.
+    # Takes priority over DATABASE_URL so a stray .env entry can't make local
+    # test runs hit a live hosted database.
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
             "NAME": BASE_DIR / "db.sqlite3",
         }
+    }
+elif os.environ.get("DATABASE_URL"):
+    # Hosted Postgres (e.g. Neon) for deployed environments.
+    DATABASES = {
+        "default": dj_database_url.parse(os.environ["DATABASE_URL"], conn_max_age=600, ssl_require=True)
     }
 else:
     DATABASES = {
