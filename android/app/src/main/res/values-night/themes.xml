@@ -1,0 +1,10 @@
+<resources>
+    <style name="Theme.NutriScan" parent="android:Theme.Material.NoActionBar" />
+
+    <style name="Theme.NutriScan.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/ns_splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_mark</item>
+        <item name="windowSplashScreenAnimationDuration">450</item>
+        <item name="postSplashScreenTheme">@style/Theme.NutriScan</item>
+    </style>
+</resources>

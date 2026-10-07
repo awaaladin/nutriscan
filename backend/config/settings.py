@@ -107,6 +107,10 @@ REST_FRAMEWORK = {
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(hours=1),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
+    # Each silent refresh issues a new 30-day refresh token too, so a user
+    # who opens the app at least once a month never sees a login prompt
+    # again -- the same "stay signed in" behavior as Facebook/Instagram.
+    "ROTATE_REFRESH_TOKENS": True,
 }
 
 CORS_ALLOW_ALL_ORIGINS = DEBUG

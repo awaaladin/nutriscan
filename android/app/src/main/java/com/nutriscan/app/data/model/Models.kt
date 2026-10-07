@@ -19,14 +19,17 @@ data class Product(
 )
 
 data class ScanResponse(
-    val scan_id: Int,
     val product: Product,
-    val score: Int,
-    val label: String,
-    val diabetic_risk: String,
-    val flags: List<String>,
-    val insufficient_data: Boolean,
-    val explanation: String,
+    // Null for a non-food item (see product_type) -- WHO scoring doesn't apply to those.
+    val scan_id: Int? = null,
+    val score: Int? = null,
+    val label: String? = null,
+    val diabetic_risk: String? = null,
+    val flags: List<String> = emptyList(),
+    val insufficient_data: Boolean = false,
+    val explanation: String? = null,
+    val product_type: String? = null,
+    val detail: String? = null,
 )
 
 data class ScanRequest(val barcode: String)

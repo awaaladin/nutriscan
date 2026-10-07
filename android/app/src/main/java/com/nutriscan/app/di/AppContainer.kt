@@ -2,6 +2,7 @@ package com.nutriscan.app.di
 
 import android.content.Context
 import com.nutriscan.app.data.local.AppDatabase
+import com.nutriscan.app.data.local.AppPreferencesManager
 import com.nutriscan.app.data.local.SessionManager
 import com.nutriscan.app.data.remote.RetrofitClient
 import com.nutriscan.app.data.repository.NutriScanRepository
@@ -10,10 +11,16 @@ import com.nutriscan.app.data.repository.NutriScanRepository
  * MVP's surface area; swap for Hilt if the dependency graph grows. */
 object AppContainer {
     @Volatile private var repository: NutriScanRepository? = null
+    @Volatile private var appPreferences: AppPreferencesManager? = null
 
     fun repository(context: Context): NutriScanRepository =
         repository ?: synchronized(this) {
             repository ?: build(context).also { repository = it }
+        }
+
+    fun appPreferences(context: Context): AppPreferencesManager =
+        appPreferences ?: synchronized(this) {
+            appPreferences ?: AppPreferencesManager(context.applicationContext).also { appPreferences = it }
         }
 
     private fun build(context: Context): NutriScanRepository {

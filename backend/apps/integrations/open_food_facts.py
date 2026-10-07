@@ -5,6 +5,32 @@ from django.conf import settings
 
 OFF_API_URL = "https://world.openfoodfacts.org/api/v2/product/{barcode}.json"
 
+# Open Food Facts has no dedicated medicine database -- these are the
+# category/label tags and name keywords that show up on the drug/supplement
+# listings that do leak into OFF, used to keep WHO food scoring from being
+# applied (and looking like dosage/safety advice) to a non-food item.
+_MEDICINE_KEYWORDS = (
+    "medicine", "medicines", "medication", "drug", "drugs", "pharmaceutical",
+    "pharmaceuticals", "tablet", "tablets", "capsule", "capsules",
+    "antibiotic", "antibiotics", "analgesic", "analgesics", "antimalarial",
+    "otc-drug", "prescription", "syrup-medicine", "vaccine",
+)
+
+
+def _classify_product_type(product: dict) -> str:
+    off_type = product.get("product_type")  # "food" | "petfood" | "beauty" | "product" | None
+
+    haystack = " ".join(
+        product.get("categories_tags", []) + product.get("labels_tags", []),
+    ).lower()
+    haystack += " " + (product.get("product_name") or "").lower()
+
+    if any(keyword in haystack for keyword in _MEDICINE_KEYWORDS):
+        return "medicine"
+    if off_type and off_type != "food":
+        return "non_food"
+    return "food"
+
 
 class OpenFoodFactsClient:
     """Thin client for the Open Food Facts read API.
@@ -36,6 +62,7 @@ class OpenFoodFactsClient:
         return {
             "name": product.get("product_name") or "Unknown product",
             "brand": product.get("brands", ""),
+            "product_type": _classify_product_type(product),
             "calories_kcal": nutriments.get("energy-kcal_100g"),
             "sugar_g": nutriments.get("sugars_100g"),
             "saturated_fat_g": nutriments.get("saturated-fat_100g"),

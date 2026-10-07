@@ -1,10 +1,12 @@
 package com.nutriscan.app.ui.nav
 
 sealed class Destination(val route: String) {
+    data object Splash : Destination("splash")
     data object Onboarding : Destination("onboarding")
     data object Login : Destination("login")
     data object Home : Destination("home")
     data object Scanner : Destination("scanner")
+    data object Analyzing : Destination("analyzing")
 
     data object ProductDetail : Destination("product/{barcode}") {
         fun build(barcode: String) = "product/$barcode"
@@ -22,4 +24,7 @@ sealed class Destination(val route: String) {
     data object History : Destination("history")
     data object Profile : Destination("profile")
     data object Subscription : Destination("subscription")
+    data object Settings : Destination("settings")
+    data object Achievements : Destination("achievements")
+    data object Insights : Destination("insights")
 }

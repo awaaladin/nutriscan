@@ -20,6 +20,7 @@ class SessionManager(private val context: Context) {
     }
 
     val accessTokenFlow: Flow<String?> = context.dataStore.data.map { it[Keys.ACCESS_TOKEN] }
+    val refreshTokenFlow: Flow<String?> = context.dataStore.data.map { it[Keys.REFRESH_TOKEN] }
     val isLoggedInFlow: Flow<Boolean> = accessTokenFlow.map { !it.isNullOrBlank() }
 
     suspend fun saveTokens(access: String, refresh: String) {
@@ -29,9 +30,16 @@ class SessionManager(private val context: Context) {
         }
     }
 
+    /** Updates only the access token, used after a silent refresh -- the
+     * refresh token itself is unchanged since SIMPLE_JWT rotation is off. */
+    suspend fun saveAccessToken(access: String) {
+        context.dataStore.edit { prefs -> prefs[Keys.ACCESS_TOKEN] = access }
+    }
+
     suspend fun clear() {
         context.dataStore.edit { it.clear() }
     }
 
     fun getAccessTokenBlocking(): String? = runBlocking { accessTokenFlow.first() }
+    fun getRefreshTokenBlocking(): String? = runBlocking { refreshTokenFlow.first() }
 }

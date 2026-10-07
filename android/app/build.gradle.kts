@@ -16,7 +16,8 @@ android {
         versionName = "0.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8000/\"")
+        // Deployed backend on Vercel — works over any network, no USB tether needed.
+        buildConfigField("String", "API_BASE_URL", "\"https://backend-flame-theta-28.vercel.app/\"")
     }
 
     buildTypes {
@@ -64,7 +65,10 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.navigation:navigation-compose:2.7.7")
+    implementation("androidx.core:core-splashscreen:1.0.1")
+    implementation("androidx.compose.foundation:foundation")
 
     // Networking
     implementation("com.squareup.retrofit2:retrofit:2.11.0")

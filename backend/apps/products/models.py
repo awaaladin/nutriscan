@@ -7,10 +7,20 @@ class Product(models.Model):
         OPEN_FOOD_FACTS = "off", "Open Food Facts"
         COMMUNITY = "community", "Community submission"
 
+    class ProductType(models.TextChoices):
+        FOOD = "food", "Packaged food"
+        MEDICINE = "medicine", "Medicine / drug"
+        NON_FOOD = "non_food", "Other non-food item"
+
     barcode = models.CharField(max_length=32, unique=True, db_index=True)
     name = models.CharField(max_length=255)
     brand = models.CharField(max_length=255, blank=True)
     source = models.CharField(max_length=16, choices=Source.choices, default=Source.OPEN_FOOD_FACTS)
+    # WHO scoring only applies to food; medicine/other non-food barcodes are
+    # detected from Open Food Facts category data and short-circuit scoring
+    # (see apps.products.views.ScanView) since a health score is meaningless
+    # -- and could look like dosage/safety advice -- for a drug.
+    product_type = models.CharField(max_length=16, choices=ProductType.choices, default=ProductType.FOOD)
 
     # All nutrition values are per 100g/100ml, matching Open Food Facts convention.
     calories_kcal = models.FloatField(null=True, blank=True)

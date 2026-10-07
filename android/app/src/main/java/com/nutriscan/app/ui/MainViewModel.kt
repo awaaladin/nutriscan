@@ -16,6 +16,7 @@ sealed class ScanUiState {
     data object Loading : ScanUiState()
     data class Success(val result: ScanResponse) : ScanUiState()
     data class NotFound(val barcode: String) : ScanUiState()
+    data class NonFood(val productName: String, val message: String) : ScanUiState()
     data class Offline(val cached: CachedScanEntity) : ScanUiState()
     data class Error(val message: String) : ScanUiState()
 }
@@ -32,6 +33,7 @@ class MainViewModel(private val repository: NutriScanRepository) : ViewModel() {
             _scanState.value = ScanUiState.Loading
             _scanState.value = when (val outcome = repository.scan(barcode)) {
                 is ScanOutcome.Success -> ScanUiState.Success(outcome.result)
+                is ScanOutcome.NonFood -> ScanUiState.NonFood(outcome.productName, outcome.message)
                 is ScanOutcome.NotFound -> ScanUiState.NotFound(outcome.barcode)
                 is ScanOutcome.OfflineCached -> ScanUiState.Offline(outcome.cached)
                 is ScanOutcome.Error -> ScanUiState.Error(outcome.message)

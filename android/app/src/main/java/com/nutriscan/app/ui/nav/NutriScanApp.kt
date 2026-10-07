@@ -1,55 +1,134 @@
 package com.nutriscan.app.ui.nav
 
-import androidx.compose.foundation.layout.Box
+import androidx.compose.animation.AnimatedContentScope
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.activity.ComponentActivity
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.nutriscan.app.di.AppContainer
 import com.nutriscan.app.ui.MainViewModel
 import com.nutriscan.app.ui.ScanUiState
+import com.nutriscan.app.ui.screens.AchievementsScreen
+import com.nutriscan.app.ui.screens.AnalyzingScreen
 import com.nutriscan.app.ui.screens.HealthAnalysisScreen
 import com.nutriscan.app.ui.screens.HistoryScreen
 import com.nutriscan.app.ui.screens.HomeScreen
+import com.nutriscan.app.ui.screens.InsightsScreen
 import com.nutriscan.app.ui.screens.LoginScreen
 import com.nutriscan.app.ui.screens.OnboardingScreen
 import com.nutriscan.app.ui.screens.ProInsightsScreen
 import com.nutriscan.app.ui.screens.ProductDetailScreen
 import com.nutriscan.app.ui.screens.ProfileScreen
 import com.nutriscan.app.ui.screens.ScannerScreen
+import com.nutriscan.app.ui.screens.SettingsScreen
+import com.nutriscan.app.ui.screens.SplashScreen
 import com.nutriscan.app.ui.screens.SubmitProductScreen
 import com.nutriscan.app.ui.screens.SubscriptionScreen
+import com.nutriscan.app.ui.theme.NutriScanTheme
+
+private fun forwardEnter(): EnterTransition =
+    slideInHorizontally(animationSpec = tween(320)) { it / 4 } + fadeIn(tween(320))
+
+private fun forwardExit(): ExitTransition =
+    slideOutHorizontally(animationSpec = tween(320)) { -it / 4 } + fadeOut(tween(320))
+
+private fun backEnter(): EnterTransition =
+    slideInHorizontally(animationSpec = tween(320)) { -it / 4 } + fadeIn(tween(320))
+
+private fun backExit(): ExitTransition =
+    slideOutHorizontally(animationSpec = tween(320)) { it / 4 } + fadeOut(tween(320))
+
+private fun NavGraphBuilder.animatedComposable(
+    route: String,
+    content: @Composable AnimatedContentScope.(NavBackStackEntry) -> Unit,
+) {
+    composable(
+        route = route,
+        enterTransition = { forwardEnter() },
+        exitTransition = { forwardExit() },
+        popEnterTransition = { backEnter() },
+        popExitTransition = { backExit() },
+        content = content,
+    )
+}
 
 @Composable
 fun NutriScanApp() {
     val context = LocalContext.current
     val repository = remember(context) { AppContainer.repository(context) }
+    val preferences = remember(context) { AppContainer.appPreferences(context) }
     val mainViewModel: MainViewModel = viewModel(factory = MainViewModel.Factory(repository))
     val navController = rememberNavController()
     var selectedGoal by remember { mutableStateOf("general_health") }
 
     val isLoggedIn by repository.isLoggedIn.collectAsState(initial = null)
+    val darkModeOverride by preferences.darkModeOverride.collectAsState(initial = null)
+    val useDarkTheme = darkModeOverride ?: isSystemInDarkTheme()
 
-    when (isLoggedIn) {
-        null -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
+    // enableEdgeToEdge() in MainActivity only reads the theme once at cold start;
+    // the in-app dark-mode override can diverge from the system setting afterwards,
+    // so status/nav bar icon contrast has to be kept in sync here instead.
+    val view = LocalView.current
+    SideEffect {
+        val window = (context as ComponentActivity).window
+        val insetsController = WindowCompat.getInsetsController(window, view)
+        insetsController.isAppearanceLightStatusBars = !useDarkTheme
+        insetsController.isAppearanceLightNavigationBars = !useDarkTheme
+    }
+
+    // If a refresh fails (refresh token itself expired/revoked), TokenAuthenticator
+    // clears the session; bounce straight to Login instead of leaving the user
+    // stuck looking at raw 401 errors on whatever screen they were on.
+    LaunchedEffect(isLoggedIn) {
+        val currentRoute = navController.currentBackStackEntry?.destination?.route
+        val exemptRoutes = setOf(Destination.Splash.route, Destination.Onboarding.route, Destination.Login.route)
+        if (isLoggedIn == false && currentRoute !in exemptRoutes) {
+            navController.navigate(Destination.Login.route) {
+                popUpTo(0) { inclusive = true }
+            }
         }
-        else -> NavHost(
-            navController = navController,
-            startDestination = if (isLoggedIn == true) Destination.Home.route else Destination.Onboarding.route,
-        ) {
-            composable(Destination.Onboarding.route) {
+    }
+
+    NutriScanTheme(useDarkTheme = useDarkTheme) {
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        NavHost(navController = navController, startDestination = Destination.Splash.route) {
+            composable(Destination.Splash.route) {
+                SplashScreen(
+                    onFinished = {
+                        val destination = if (isLoggedIn == true) Destination.Home.route else Destination.Onboarding.route
+                        navController.navigate(destination) {
+                            popUpTo(Destination.Splash.route) { inclusive = true }
+                        }
+                    },
+                )
+            }
+            animatedComposable(Destination.Onboarding.route) {
                 OnboardingScreen(
                     onContinue = { goal ->
                         selectedGoal = goal
@@ -57,7 +136,7 @@ fun NutriScanApp() {
                     },
                 )
             }
-            composable(Destination.Login.route) {
+            animatedComposable(Destination.Login.route) {
                 LoginScreen(
                     repository = repository,
                     defaultGoal = selectedGoal,
@@ -68,7 +147,7 @@ fun NutriScanApp() {
                     },
                 )
             }
-            composable(Destination.Home.route) {
+            animatedComposable(Destination.Home.route) {
                 HomeScreen(
                     repository = repository,
                     onScan = {
@@ -78,18 +157,38 @@ fun NutriScanApp() {
                     onOpenHistory = { navController.navigate(Destination.History.route) },
                     onOpenProfile = { navController.navigate(Destination.Profile.route) },
                     onOpenSubscription = { navController.navigate(Destination.Subscription.route) },
+                    onOpenSettings = { navController.navigate(Destination.Settings.route) },
+                    onOpenInsights = { navController.navigate(Destination.Insights.route) },
+                    onOpenAchievements = { navController.navigate(Destination.Achievements.route) },
                 )
             }
-            composable(Destination.Scanner.route) {
+            animatedComposable(Destination.Scanner.route) {
                 ScannerScreen(
                     viewModel = mainViewModel,
-                    onProductFound = { barcode -> navController.navigate(Destination.ProductDetail.build(barcode)) },
-                    onNotFound = { barcode -> navController.navigate(Destination.SubmitProduct.build(barcode)) },
+                    onBack = { navController.popBackStack() },
+                    onBarcodeCaptured = { navController.navigate(Destination.Analyzing.route) },
                 )
             }
-            composable(Destination.ProductDetail.route) {
+            animatedComposable(Destination.Analyzing.route) {
+                AnalyzingScreen(
+                    viewModel = mainViewModel,
+                    onSuccess = { barcode ->
+                        navController.navigate(Destination.ProductDetail.build(barcode)) {
+                            popUpTo(Destination.Home.route)
+                        }
+                    },
+                    onNotFound = { barcode ->
+                        navController.navigate(Destination.SubmitProduct.build(barcode)) {
+                            popUpTo(Destination.Home.route)
+                        }
+                    },
+                    onRetry = { navController.popBackStack(Destination.Scanner.route, inclusive = false) },
+                )
+            }
+            animatedComposable(Destination.ProductDetail.route) {
                 ProductDetailScreen(
                     viewModel = mainViewModel,
+                    onBack = { navController.popBackStack(Destination.Home.route, inclusive = false) },
                     onViewAnalysis = {
                         val currentState = mainViewModel.scanState.value
                         val barcode = (currentState as? ScanUiState.Success)?.result?.product?.barcode.orEmpty()
@@ -97,34 +196,52 @@ fun NutriScanApp() {
                     },
                 )
             }
-            composable(Destination.HealthAnalysis.route) {
+            animatedComposable(Destination.HealthAnalysis.route) {
                 HealthAnalysisScreen(
                     viewModel = mainViewModel,
-                    onBack = {
-                        navController.popBackStack(Destination.Home.route, inclusive = false)
-                    },
+                    onBack = { navController.popBackStack(Destination.Home.route, inclusive = false) },
                 )
             }
-            composable(Destination.SubmitProduct.route) { backStackEntry ->
+            animatedComposable(Destination.SubmitProduct.route) { backStackEntry ->
                 val barcode = backStackEntry.arguments?.getString("barcode").orEmpty()
                 SubmitProductScreen(
                     repository = repository,
                     barcode = barcode,
+                    onBack = { navController.popBackStack(Destination.Home.route, inclusive = false) },
                     onSubmitted = { navController.popBackStack(Destination.Home.route, inclusive = false) },
                 )
             }
-            composable(Destination.ProInsights.route) {
-                ProInsightsScreen(repository = repository)
+            animatedComposable(Destination.ProInsights.route) {
+                ProInsightsScreen(repository = repository, onBack = { navController.popBackStack() })
             }
-            composable(Destination.History.route) {
-                HistoryScreen(repository = repository)
+            animatedComposable(Destination.History.route) {
+                HistoryScreen(repository = repository, onBack = { navController.popBackStack() })
             }
-            composable(Destination.Profile.route) {
-                ProfileScreen(repository = repository)
+            animatedComposable(Destination.Profile.route) {
+                ProfileScreen(repository = repository, onBack = { navController.popBackStack() })
             }
-            composable(Destination.Subscription.route) {
-                SubscriptionScreen(repository = repository)
+            animatedComposable(Destination.Subscription.route) {
+                SubscriptionScreen(repository = repository, onBack = { navController.popBackStack() })
             }
+            animatedComposable(Destination.Settings.route) {
+                SettingsScreen(
+                    repository = repository,
+                    preferences = preferences,
+                    onBack = { navController.popBackStack() },
+                    onLoggedOut = {
+                        navController.navigate(Destination.Onboarding.route) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    },
+                )
+            }
+            animatedComposable(Destination.Achievements.route) {
+                AchievementsScreen(repository = repository, onBack = { navController.popBackStack() })
+            }
+            animatedComposable(Destination.Insights.route) {
+                InsightsScreen(repository = repository, onBack = { navController.popBackStack() })
+            }
+        }
         }
     }
 }

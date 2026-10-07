@@ -14,6 +14,7 @@ object RetrofitClient {
         }
         val client = OkHttpClient.Builder()
             .addInterceptor(AuthInterceptor(sessionManager))
+            .authenticator(TokenAuthenticator(sessionManager, BuildConfig.API_BASE_URL))
             .addInterceptor(logging)
             .build()
 

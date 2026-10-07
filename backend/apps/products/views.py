@@ -30,6 +30,16 @@ def _nutrition_from_product(product: Product) -> NutritionFacts:
     )
 
 
+def _non_food_message(product: Product) -> str:
+    if product.product_type == Product.ProductType.MEDICINE:
+        return (
+            f"{product.name} looks like a medicine, not a packaged food. NutriScan scores "
+            "food nutrition against WHO thresholds and can't assess drug dosage or safety -- "
+            "please check the package insert or ask a pharmacist."
+        )
+    return f"{product.name} doesn't look like a packaged food, so a WHO health score doesn't apply here."
+
+
 def _get_or_create_explanation(product: Product, result: HealthScoreResult) -> str:
     cached = CachedExplanation.objects.filter(
         product=product,
@@ -79,6 +89,18 @@ class ScanView(APIView):
                 )
             product = Product.objects.create(
                 barcode=barcode, source=Product.Source.OPEN_FOOD_FACTS, **off_data
+            )
+
+        if product.product_type != Product.ProductType.FOOD:
+            # WHO scoring assumes a nutrition label; applying it to a drug or
+            # other non-food item would look like dosage/safety advice, so
+            # skip scoring entirely and tell the user plainly what this is.
+            return Response(
+                {
+                    "product": ProductSerializer(product).data,
+                    "product_type": product.product_type,
+                    "detail": _non_food_message(product),
+                }
             )
 
         result = compute_health_score(_nutrition_from_product(product), product.ingredients_text)

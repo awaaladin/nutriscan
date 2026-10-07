@@ -17,11 +17,13 @@ import com.nutriscan.app.data.model.TokenPair
 import com.nutriscan.app.data.model.UserPreferences
 import com.nutriscan.app.data.model.VerifyPurchaseRequest
 import com.nutriscan.app.data.remote.ApiService
+import com.nutriscan.app.data.remote.friendlyErrorMessage
 import kotlinx.coroutines.flow.Flow
 import java.io.IOException
 
 sealed class ScanOutcome {
     data class Success(val result: ScanResponse) : ScanOutcome()
+    data class NonFood(val productName: String, val message: String) : ScanOutcome()
     data class NotFound(val barcode: String) : ScanOutcome()
     data class OfflineCached(val cached: CachedScanEntity) : ScanOutcome()
     data class Error(val message: String) : ScanOutcome()
@@ -36,7 +38,10 @@ class NutriScanRepository(
 
     suspend fun register(request: RegisterRequest): Result<RegisterResponse> = runCatching {
         val response = api.register(request)
-        if (!response.isSuccessful) error("Registration failed (${response.code()})")
+        if (!response.isSuccessful) {
+            val message = if (response.code() == 400) "That username or email is already taken." else friendlyErrorMessage(response.code())
+            error(message)
+        }
         val body = requireNotNull(response.body())
         sessionManager.saveTokens(body.access, body.refresh)
         body
@@ -44,7 +49,10 @@ class NutriScanRepository(
 
     suspend fun login(username: String, password: String): Result<TokenPair> = runCatching {
         val response = api.login(LoginRequest(username, password))
-        if (!response.isSuccessful) error("Login failed (${response.code()})")
+        if (!response.isSuccessful) {
+            val message = if (response.code() == 401) "Incorrect username or password." else friendlyErrorMessage(response.code())
+            error(message)
+        }
         val body = requireNotNull(response.body())
         sessionManager.saveTokens(body.access, body.refresh)
         body
@@ -59,22 +67,26 @@ class NutriScanRepository(
         when {
             response.isSuccessful -> {
                 val body = requireNotNull(response.body())
-                cachedScanDao.upsert(
-                    CachedScanEntity(
-                        barcode = barcode,
-                        productName = body.product.name,
-                        brand = body.product.brand,
-                        score = body.score,
-                        label = body.label,
-                        diabeticRisk = body.diabetic_risk,
-                        explanation = body.explanation,
-                        scannedAtEpochMs = System.currentTimeMillis(),
-                    ),
-                )
-                ScanOutcome.Success(body)
+                if (body.product_type != null && body.product_type != "food") {
+                    ScanOutcome.NonFood(body.product.name, body.detail.orEmpty())
+                } else {
+                    cachedScanDao.upsert(
+                        CachedScanEntity(
+                            barcode = barcode,
+                            productName = body.product.name,
+                            brand = body.product.brand,
+                            score = requireNotNull(body.score),
+                            label = requireNotNull(body.label),
+                            diabeticRisk = requireNotNull(body.diabetic_risk),
+                            explanation = body.explanation.orEmpty(),
+                            scannedAtEpochMs = System.currentTimeMillis(),
+                        ),
+                    )
+                    ScanOutcome.Success(body)
+                }
             }
             response.code() == 404 -> ScanOutcome.NotFound(barcode)
-            else -> ScanOutcome.Error("Scan failed (${response.code()})")
+            else -> ScanOutcome.Error(friendlyErrorMessage(response.code()))
         }
     } catch (e: IOException) {
         val cached = cachedScanDao.getByBarcode(barcode)
@@ -89,36 +101,36 @@ class NutriScanRepository(
 
     suspend fun history(): Result<List<HistoryItem>> = runCatching {
         val response = api.getHistory()
-        if (!response.isSuccessful) error("Failed to load history (${response.code()})")
+        if (!response.isSuccessful) error(friendlyErrorMessage(response.code()))
         requireNotNull(response.body())
     }
 
     suspend fun getPreferences(): Result<UserPreferences> = runCatching {
         val response = api.getPreferences()
-        if (!response.isSuccessful) error("Failed to load preferences (${response.code()})")
+        if (!response.isSuccessful) error(friendlyErrorMessage(response.code()))
         requireNotNull(response.body())
     }
 
     suspend fun updatePreferences(update: PreferencesUpdateRequest): Result<UserPreferences> = runCatching {
         val response = api.updatePreferences(update)
-        if (!response.isSuccessful) error("Failed to update preferences (${response.code()})")
+        if (!response.isSuccessful) error(friendlyErrorMessage(response.code()))
         requireNotNull(response.body())
     }
 
     suspend fun submitProduct(request: ProductSubmissionRequest): Result<Unit> = runCatching {
         val response = api.submitProduct(request)
-        if (!response.isSuccessful) error("Submission failed (${response.code()})")
+        if (!response.isSuccessful) error(friendlyErrorMessage(response.code()))
     }
 
     suspend fun verifySubscription(request: VerifyPurchaseRequest): Result<SubscriptionStatus> = runCatching {
         val response = api.verifySubscription(request)
-        if (!response.isSuccessful) error("Verification failed (${response.code()})")
+        if (!response.isSuccessful) error(friendlyErrorMessage(response.code()))
         requireNotNull(response.body())
     }
 
     suspend fun proInsights(): Result<ProInsights> = runCatching {
         val response = api.getProInsights()
-        if (!response.isSuccessful) error("Failed to load insights (${response.code()})")
+        if (!response.isSuccessful) error(friendlyErrorMessage(response.code()))
         requireNotNull(response.body())
     }
 }
