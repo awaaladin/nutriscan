@@ -6,6 +6,7 @@ class Product(models.Model):
     class Source(models.TextChoices):
         OPEN_FOOD_FACTS = "off", "Open Food Facts"
         COMMUNITY = "community", "Community submission"
+        AI_VISION = "ai_vision", "AI photo identification"
 
     class ProductType(models.TextChoices):
         FOOD = "food", "Packaged food"
@@ -21,6 +22,11 @@ class Product(models.Model):
     # (see apps.products.views.ScanView) since a health score is meaningless
     # -- and could look like dosage/safety advice -- for a drug.
     product_type = models.CharField(max_length=16, choices=ProductType.choices, default=ProductType.FOOD)
+    # True when nutrition data came from Gemini reading a label photo rather
+    # than a verified source (Open Food Facts contributor, pharmacist-reviewed
+    # submission) -- the score is a best-effort estimate, not a verified one,
+    # and the client should disclose that rather than presenting it the same.
+    is_estimated = models.BooleanField(default=False)
 
     # All nutrition values are per 100g/100ml, matching Open Food Facts convention.
     calories_kcal = models.FloatField(null=True, blank=True)

@@ -19,6 +19,11 @@ import com.nutriscan.app.data.model.VerifyPurchaseRequest
 import com.nutriscan.app.data.remote.ApiService
 import com.nutriscan.app.data.remote.friendlyErrorMessage
 import kotlinx.coroutines.flow.Flow
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.File
 import java.io.IOException
 
 sealed class ScanOutcome {
@@ -95,6 +100,47 @@ class NutriScanRepository(
         } else {
             ScanOutcome.Error("You're offline and this product hasn't been scanned before.")
         }
+    }
+
+    /** Fallback when [scan] comes back NotFound: has Gemini identify the
+     * product from a photo of it instead of asking the user to type in
+     * nutrition facts by hand. Best-effort -- see ScanResponse.is_estimated. */
+    suspend fun identifyProduct(barcode: String, photoFile: File): ScanOutcome = try {
+        val barcodePart = barcode.toRequestBody("text/plain".toMediaType())
+        val imagePart = MultipartBody.Part.createFormData(
+            "image",
+            photoFile.name,
+            photoFile.asRequestBody("image/jpeg".toMediaType()),
+        )
+        val response = api.identifyProduct(barcodePart, imagePart)
+        when {
+            response.isSuccessful -> {
+                val body = requireNotNull(response.body())
+                if (body.product_type != null && body.product_type != "food") {
+                    ScanOutcome.NonFood(body.product.name, body.detail.orEmpty())
+                } else if (body.score != null && body.label != null && body.diabetic_risk != null) {
+                    cachedScanDao.upsert(
+                        CachedScanEntity(
+                            barcode = barcode,
+                            productName = body.product.name,
+                            brand = body.product.brand,
+                            score = body.score,
+                            label = body.label,
+                            diabeticRisk = body.diabetic_risk,
+                            explanation = body.explanation.orEmpty(),
+                            scannedAtEpochMs = System.currentTimeMillis(),
+                        ),
+                    )
+                    ScanOutcome.Success(body)
+                } else {
+                    ScanOutcome.NotFound(barcode)
+                }
+            }
+            response.code() == 404 -> ScanOutcome.NotFound(barcode)
+            else -> ScanOutcome.Error(friendlyErrorMessage(response.code()))
+        }
+    } catch (e: IOException) {
+        ScanOutcome.Error("You're offline, so NutriScan can't identify this product from a photo right now.")
     }
 
     fun observeCachedScans(): Flow<List<CachedScanEntity>> = cachedScanDao.observeAll()

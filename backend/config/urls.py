@@ -2,7 +2,13 @@ from django.contrib import admin
 from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-from apps.products.views import AnalyzeView, ProductDetailView, ProductSubmissionView, ScanView
+from apps.products.views import (
+    AnalyzeView,
+    IdentifyProductView,
+    ProductDetailView,
+    ProductSubmissionView,
+    ScanView,
+)
 from apps.scans.views import HistoryListView
 from apps.subscriptions.views import ProInsightsView, VerifySubscriptionView
 from apps.users.views import PreferencesView, RegisterView
@@ -14,6 +20,7 @@ urlpatterns = [
     path("api/auth/login/refresh/", TokenRefreshView.as_view(), name="login-refresh"),
     path("api/scan/", ScanView.as_view(), name="scan"),
     path("api/products/submit/", ProductSubmissionView.as_view(), name="product-submit"),
+    path("api/products/identify/", IdentifyProductView.as_view(), name="product-identify"),
     path("api/products/<str:barcode>/", ProductDetailView.as_view(), name="product-detail"),
     path("api/analyze/", AnalyzeView.as_view(), name="analyze"),
     path("api/history/", HistoryListView.as_view(), name="history"),

@@ -55,6 +55,21 @@ fun HealthAnalysisScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                         Text(label, style = MaterialTheme.typography.titleMedium)
                     }
                 }
+                if (result.is_estimated) {
+                    Spacer(Modifier.height(12.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.secondaryContainer, shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+                            .padding(12.dp),
+                    ) {
+                        Text(
+                            "Estimated from a photo, not a verified nutrition label match -- double-check against the package.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
+                    }
+                }
                 if (result.insufficient_data) {
                     Spacer(Modifier.height(8.dp))
                     Text(

@@ -10,6 +10,7 @@ import com.nutriscan.app.data.repository.ScanOutcome
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.io.File
 
 sealed class ScanUiState {
     data object Idle : ScanUiState()
@@ -27,16 +28,26 @@ class MainViewModel(private val repository: NutriScanRepository) : ViewModel() {
     private val _scanState = MutableStateFlow<ScanUiState>(ScanUiState.Idle)
     val scanState: StateFlow<ScanUiState> = _scanState
 
-    fun onBarcodeScanned(barcode: String) {
+    /** [photoFile] is the frame captured at the moment the barcode was read.
+     * If the barcode isn't in Open Food Facts or our own table, it's used as
+     * a fallback to identify the product from the photo instead of sending
+     * the user straight to manual entry. */
+    fun onBarcodeScanned(barcode: String, photoFile: File? = null) {
         if (_scanState.value is ScanUiState.Loading) return
         viewModelScope.launch {
             _scanState.value = ScanUiState.Loading
-            _scanState.value = when (val outcome = repository.scan(barcode)) {
-                is ScanOutcome.Success -> ScanUiState.Success(outcome.result)
-                is ScanOutcome.NonFood -> ScanUiState.NonFood(outcome.productName, outcome.message)
-                is ScanOutcome.NotFound -> ScanUiState.NotFound(outcome.barcode)
-                is ScanOutcome.OfflineCached -> ScanUiState.Offline(outcome.cached)
-                is ScanOutcome.Error -> ScanUiState.Error(outcome.message)
+            val outcome = repository.scan(barcode)
+            val resolved = if (outcome is ScanOutcome.NotFound && photoFile != null) {
+                repository.identifyProduct(barcode, photoFile)
+            } else {
+                outcome
+            }
+            _scanState.value = when (resolved) {
+                is ScanOutcome.Success -> ScanUiState.Success(resolved.result)
+                is ScanOutcome.NonFood -> ScanUiState.NonFood(resolved.productName, resolved.message)
+                is ScanOutcome.NotFound -> ScanUiState.NotFound(resolved.barcode)
+                is ScanOutcome.OfflineCached -> ScanUiState.Offline(resolved.cached)
+                is ScanOutcome.Error -> ScanUiState.Error(resolved.message)
             }
         }
     }

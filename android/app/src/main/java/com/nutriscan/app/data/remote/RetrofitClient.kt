@@ -6,6 +6,7 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
     fun create(sessionManager: SessionManager): ApiService {
@@ -16,6 +17,11 @@ object RetrofitClient {
             .addInterceptor(AuthInterceptor(sessionManager))
             .authenticator(TokenAuthenticator(sessionManager, BuildConfig.API_BASE_URL))
             .addInterceptor(logging)
+            // Photo-identification uploads an image and waits on a Gemini vision
+            // call server-side, which can take noticeably longer than a plain scan.
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(45, TimeUnit.SECONDS)
+            .writeTimeout(45, TimeUnit.SECONDS)
             .build()
 
         val retrofit = Retrofit.Builder()

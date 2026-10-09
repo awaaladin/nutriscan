@@ -3,6 +3,8 @@ from typing import Optional
 import requests
 from django.conf import settings
 
+from apps.products.medicine_names import is_known_medicine_name
+
 OFF_API_URL = "https://world.openfoodfacts.org/api/v2/product/{barcode}.json"
 
 # Open Food Facts has no dedicated medicine database -- these are the
@@ -23,9 +25,10 @@ def _classify_product_type(product: dict) -> str:
     haystack = " ".join(
         product.get("categories_tags", []) + product.get("labels_tags", []),
     ).lower()
-    haystack += " " + (product.get("product_name") or "").lower()
+    name = product.get("product_name") or ""
+    haystack += " " + name.lower()
 
-    if any(keyword in haystack for keyword in _MEDICINE_KEYWORDS):
+    if any(keyword in haystack for keyword in _MEDICINE_KEYWORDS) or is_known_medicine_name(name):
         return "medicine"
     if off_type and off_type != "food":
         return "non_food"

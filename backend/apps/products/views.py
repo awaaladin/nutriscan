@@ -6,9 +6,11 @@ from rest_framework.views import APIView
 
 from apps.integrations.llm_explanations import get_explanation_provider
 from apps.integrations.open_food_facts import OpenFoodFactsClient
+from apps.integrations.vision_identify import identify_product_from_image
 from apps.scans.models import Scan
 from apps.scoring.engine import HealthScoreResult, NutritionFacts, compute_health_score
 
+from .medicine_names import is_known_medicine_name
 from .models import CachedExplanation, Product
 from .serializers import (
     AnalyzeRequestSerializer,
@@ -143,8 +145,117 @@ class ProductSubmissionView(APIView):
     def post(self, request):
         serializer = ProductSubmissionSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        if is_known_medicine_name(data["name"]):
+            # No barcode database exists for Nigerian pharmaceuticals, so a
+            # name match is the only signal available. Skip the community
+            # food-review queue entirely -- there's no nutrition data to
+            # review for a drug -- and make the barcode recognizable the
+            # moment anyone scans it again.
+            product, _ = Product.objects.update_or_create(
+                barcode=data["barcode"],
+                defaults={
+                    "name": data["name"],
+                    "brand": data.get("brand", ""),
+                    "source": Product.Source.COMMUNITY,
+                    "product_type": Product.ProductType.MEDICINE,
+                },
+            )
+            return Response(
+                {
+                    "product": ProductSerializer(product).data,
+                    "product_type": product.product_type,
+                    "detail": _non_food_message(product),
+                },
+                status=status.HTTP_201_CREATED,
+            )
+
         serializer.save(submitted_by=request.user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class IdentifyProductView(APIView):
+    """Fallback when a barcode isn't in Open Food Facts or our local table:
+    identify the product from a photo of it instead (see
+    apps.integrations.vision_identify). Best-effort -- results are marked
+    is_estimated so the client can disclose that the nutrition numbers came
+    from Gemini reading the label photo, not a verified source."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        barcode = request.data.get("barcode", "")
+        image = request.FILES.get("image")
+        if not barcode or not image:
+            return Response({"detail": "barcode and image are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        result = identify_product_from_image(image.read(), image.content_type or "image/jpeg")
+        if result is None:
+            return Response(
+                {
+                    "detail": "Couldn't identify this product from the photo.",
+                    "action": "submit_product",
+                    "barcode": barcode,
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        product_type = result.get("product_type", "food")
+        product, _ = Product.objects.update_or_create(
+            barcode=barcode,
+            defaults={
+                "name": result.get("name") or "Unidentified product",
+                "brand": result.get("brand", ""),
+                "source": Product.Source.AI_VISION,
+                "product_type": product_type,
+                "is_estimated": True,
+                "ingredients_text": result.get("ingredients_text", ""),
+                "calories_kcal": result.get("calories_kcal"),
+                "sugar_g": result.get("sugar_g"),
+                "saturated_fat_g": result.get("saturated_fat_g"),
+                "sodium_mg": result.get("sodium_mg"),
+                "carbohydrates_g": result.get("carbohydrates_g"),
+                "fiber_g": result.get("fiber_g"),
+                "protein_g": result.get("protein_g"),
+            },
+        )
+
+        if product.product_type != Product.ProductType.FOOD:
+            return Response(
+                {
+                    "product": ProductSerializer(product).data,
+                    "product_type": product.product_type,
+                    "is_estimated": True,
+                    "detail": _non_food_message(product) + " (Identified from photo, not a scanned barcode match.)",
+                }
+            )
+
+        health_result = compute_health_score(_nutrition_from_product(product), product.ingredients_text)
+        explanation = _get_or_create_explanation(product, health_result)
+
+        scan = Scan.objects.create(
+            user=request.user,
+            product=product,
+            score=health_result.score,
+            label=health_result.label.value,
+            diabetic_risk=health_result.diabetic_risk.value,
+            flags=health_result.flags,
+        )
+
+        return Response(
+            {
+                "scan_id": scan.id,
+                "product": ProductSerializer(product).data,
+                "score": health_result.score,
+                "label": health_result.label.value,
+                "diabetic_risk": health_result.diabetic_risk.value,
+                "flags": health_result.flags,
+                "insufficient_data": health_result.insufficient_data,
+                "is_estimated": True,
+                "explanation": explanation + " Note: this was read from a photo, not a verified nutrition label match -- double-check against the package.",
+            }
+        )
 
 
 class AnalyzeView(APIView):

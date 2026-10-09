@@ -30,6 +30,7 @@ data class ScanResponse(
     val explanation: String? = null,
     val product_type: String? = null,
     val detail: String? = null,
+    val is_estimated: Boolean = false,
 )
 
 data class ScanRequest(val barcode: String)

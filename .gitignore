@@ -23,3 +23,6 @@ android/.cxx/
 .DS_Store
 *.log
 .idea/
+
+.vercel
+.env*
