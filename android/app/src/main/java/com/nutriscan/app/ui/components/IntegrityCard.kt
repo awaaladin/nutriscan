@@ -1,84 +1,89 @@
 package com.nutriscan.app.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Cancel
+import androidx.compose.material.icons.rounded.HelpOutline
+import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.Card
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.nutriscan.app.data.model.Integrity
 import com.nutriscan.app.ui.theme.NsAmber
+import com.nutriscan.app.ui.theme.NsCharcoal400
 import com.nutriscan.app.ui.theme.NsEmerald700
 import com.nutriscan.app.ui.theme.NsRed
 
-private fun integrityColor(percent: Int): Color = when {
-    percent >= 70 -> NsEmerald700
-    percent >= 40 -> NsAmber
-    else -> NsRed
+private data class TierStyle(val color: Color, val icon: ImageVector)
+
+fun tierColor(tier: String): Color = tierStyle(tier).color
+
+private fun tierStyle(tier: String): TierStyle = when (tier) {
+    "verified" -> TierStyle(NsEmerald700, Icons.Rounded.CheckCircle)
+    "reported_fake" -> TierStyle(NsRed, Icons.Rounded.Cancel)
+    "disputed", "suspicious" -> TierStyle(NsAmber, Icons.Rounded.Warning)
+    else -> TierStyle(NsCharcoal400, Icons.Rounded.HelpOutline)
 }
 
-private fun integrityHeadline(percent: Int): String = when {
-    percent >= 70 -> "Likely genuine"
-    percent >= 40 -> "Unverified -- be careful"
-    else -> "Likely fake or unreliable"
-}
-
-/** The headline trust signal for a product. Always shows how much evidence is
- * behind the number, because a percentage with no votes behind it is just the
- * barcode check and shouldn't read as a community verdict. */
+/** The trust signal for a product. It shows a tier and the reasons behind it
+ * rather than a percentage: no registry or vote count can prove one pack is
+ * genuine, so the card says what we actually know and what we don't. */
 @Composable
 fun IntegrityCard(integrity: Integrity, modifier: Modifier = Modifier) {
-    val color = integrityColor(integrity.percent)
-    val votes = integrity.real_votes + integrity.fake_votes
+    val style = tierStyle(integrity.tier)
     Card(shape = RoundedCornerShape(16.dp), modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("${integrity.percent}%", style = MaterialTheme.typography.headlineMedium, color = color)
-                Spacer(Modifier.width(12.dp))
+                Icon(style.icon, contentDescription = null, tint = style.color, modifier = Modifier.size(28.dp))
+                Spacer(Modifier.width(10.dp))
                 Column {
-                    Text(integrityHeadline(integrity.percent), style = MaterialTheme.typography.titleMedium)
+                    Text(integrity.headline, style = MaterialTheme.typography.titleMedium, color = style.color)
                     Text(
-                        "Integrity score",
+                        "Authenticity check",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
             Spacer(Modifier.height(10.dp))
-            LinearProgressIndicator(
-                progress = { integrity.percent / 100f },
-                color = color,
-                modifier = Modifier.fillMaxWidth().height(8.dp),
-            )
-            Spacer(Modifier.height(10.dp))
+            integrity.reasons.forEach { reason ->
+                Row(modifier = Modifier.padding(vertical = 2.dp), verticalAlignment = Alignment.Top) {
+                    Spacer(Modifier.width(2.dp))
+                    Spacer(
+                        Modifier
+                            .padding(top = 7.dp)
+                            .size(5.dp)
+                            .background(style.color, CircleShape),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(reason, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+            Spacer(Modifier.height(8.dp))
             Text(
-                when {
-                    votes == 0 -> "No community reports yet -- this score is based on the barcode only."
-                    else -> "${integrity.real_votes} say real, ${integrity.fake_votes} say fake " +
-                        "(${integrity.confidence} confidence)"
-                },
-                style = MaterialTheme.typography.bodySmall,
+                "Based on a registry check and user reports. It can't prove an individual pack is genuine " +
+                    "-- check the seal and batch number too.",
+                style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            if (!integrity.checksum_valid) {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    "This barcode number is not a valid retail barcode.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = NsRed,
-                )
-            }
         }
     }
 }

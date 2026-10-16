@@ -19,6 +19,7 @@ class ProductReport(models.Model):
     comment = models.TextField(blank=True, max_length=1000)
     where_bought = models.CharField(max_length=255, blank=True)
     batch_number = models.CharField(max_length=64, blank=True)
+    nafdac_number = models.CharField(max_length=32, blank=True)
     is_hidden = models.BooleanField(default=False, help_text="Set by an admin after review; excluded from scoring.")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -52,3 +53,29 @@ class ReportFlag(models.Model):
         constraints = [
             models.UniqueConstraint(fields=["report", "user"], name="one_flag_per_user_per_report"),
         ]
+
+
+class ProductDispute(models.Model):
+    """A manufacturer or brand owner contesting how their product is shown
+    (e.g. a rival mass-reporting it). Reviewed by an admin, who can hide
+    reports, confirm the product as manufacturer-verified, or reject."""
+
+    class Status(models.TextChoices):
+        OPEN = "open", "Open"
+        RESOLVED = "resolved", "Resolved"
+        REJECTED = "rejected", "Rejected"
+
+    product = models.ForeignKey("products.Product", on_delete=models.CASCADE, related_name="disputes")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="disputes")
+    company_name = models.CharField(max_length=255)
+    contact = models.CharField(max_length=255, help_text="Email or phone the admin can use to follow up.")
+    message = models.TextField(max_length=2000)
+    nafdac_number = models.CharField(max_length=32, blank=True)
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.OPEN)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Dispute({self.product_id}, {self.company_name}, {self.status})"

@@ -31,6 +31,7 @@ RESPONSE_SCHEMA = {
         "confidence": {"type": "number"},
         "barcode": {"type": "string", "nullable": True},
         "ingredients_text": {"type": "string"},
+        "nafdac_number": {"type": "string", "nullable": True},
         "calories_kcal": {"type": "number", "nullable": True},
         "sugar_g": {"type": "number", "nullable": True},
         "saturated_fat_g": {"type": "number", "nullable": True},
@@ -55,6 +56,9 @@ Rules:
   only barcode reading available if the camera's live scanner couldn't lock onto it --
   read it directly from the printed numbers, not by interpreting the bar pattern. Use
   null if no barcode is visible or the digits aren't legible.
+- If a NAFDAC registration number is printed on the pack (formats like "A4-1234" or
+  "04-8861", often labelled "NAFDAC Reg. No."), transcribe it exactly into
+  nafdac_number; use null if it isn't visible or legible.
 - Only fill in numeric nutrition fields if you can actually read them in the photo --
   use null rather than guessing a plausible-sounding number.
 - Nutrition values must be per 100g or 100ml, converting from per-serving if needed.

@@ -28,6 +28,15 @@ class Product(models.Model):
     # and the client should disclose that rather than presenting it the same.
     is_estimated = models.BooleanField(default=False)
 
+    # NAFDAC registration number as printed on the pack. Only a *claim* until an
+    # admin confirms it against the NAFDAC Greenbook (nafdac_verified); even
+    # then it proves the product is registered, not that a given pack is real.
+    nafdac_number = models.CharField(max_length=32, blank=True)
+    nafdac_verified = models.BooleanField(default=False)
+    # Set by an admin when the manufacturer's barcode has been confirmed
+    # (e.g. via GS1 Nigeria or a direct brand partnership).
+    manufacturer_verified = models.BooleanField(default=False)
+
     # All nutrition values are per 100g/100ml, matching Open Food Facts convention.
     calories_kcal = models.FloatField(null=True, blank=True)
     sugar_g = models.FloatField(null=True, blank=True)

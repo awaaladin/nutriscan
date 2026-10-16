@@ -12,6 +12,8 @@ from apps.integrations.vision_identify import identify_product_from_image
 from apps.scans.models import Scan
 from apps.scoring.engine import HealthScoreResult, NutritionFacts, compute_health_score
 
+from apps.community.nafdac import normalize_nafdac_number
+
 from .medicine_names import is_known_medicine_name
 from .models import CachedExplanation, Product
 from .serializers import (
@@ -219,6 +221,7 @@ class IdentifyProductView(APIView):
         barcode = client_barcode or (result.get("barcode") or "").strip() or f"AI-{uuid4().hex[:12]}"
 
         product_type = result.get("product_type", "food")
+        nafdac = normalize_nafdac_number(result.get("nafdac_number"))
         product, _ = Product.objects.update_or_create(
             barcode=barcode,
             defaults={
@@ -227,6 +230,8 @@ class IdentifyProductView(APIView):
                 "source": Product.Source.AI_VISION,
                 "product_type": product_type,
                 "is_estimated": True,
+                # Only overwrite a stored number when this photo actually showed one.
+                **({"nafdac_number": nafdac} if nafdac else {}),
                 "ingredients_text": result.get("ingredients_text", ""),
                 "calories_kcal": result.get("calories_kcal"),
                 "sugar_g": result.get("sugar_g"),

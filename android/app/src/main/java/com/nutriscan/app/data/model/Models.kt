@@ -16,20 +16,27 @@ data class Product(
     val ingredients_text: String? = null,
     val additives: List<String> = emptyList(),
     val image_url: String? = null,
+    val nafdac_number: String? = null,
+    val nafdac_verified: Boolean = false,
+    val manufacturer_verified: Boolean = false,
     // Null on responses from older backends.
     val integrity: Integrity? = null,
 )
 
-/** How likely our data says a product is genuine (0-100), blending barcode
- * signals with community real/fake votes. [confidence] is low/medium/high by
- * vote count -- a low-confidence percentage is mostly the barcode prior. */
+/** What our evidence says about a product. [tier] is one of verified,
+ * unverified, suspicious, disputed or reported_fake; [reasons] are plain-language
+ * lines the UI shows verbatim. There is deliberately no percentage -- nothing
+ * can prove a single pack is genuine, so we show evidence instead. */
 data class Integrity(
-    val percent: Int,
-    val confidence: String,
-    val real_votes: Int,
-    val fake_votes: Int,
-    val checksum_valid: Boolean,
-    val in_independent_db: Boolean,
+    val tier: String,
+    val headline: String,
+    val reasons: List<String> = emptyList(),
+    val confidence: String = "low",
+    val real_votes: Int = 0,
+    val fake_votes: Int = 0,
+    val checksum_valid: Boolean = true,
+    val nafdac_verified: Boolean = false,
+    val manufacturer_verified: Boolean = false,
 )
 
 data class ReportPhoto(val id: Int, val image: String)
@@ -41,6 +48,7 @@ data class ProductReport(
     val comment: String = "",
     val where_bought: String = "",
     val batch_number: String = "",
+    val nafdac_number: String = "",
     val photos: List<ReportPhoto> = emptyList(),
     val created_at: String = "",
 )
@@ -138,4 +146,23 @@ data class AvoidProduct(val barcode: String, val name: String)
 data class ProInsights(
     val avoid_list: List<AvoidProduct>,
     val patterns: List<String>,
+)
+
+/** One row of the Alerts list: a product with credible fake reports. */
+data class AlertItem(
+    val barcode: String,
+    val name: String,
+    val brand: String? = null,
+    val tier: String,
+    val headline: String,
+    val fake_votes: Int,
+    val places: List<String> = emptyList(),
+    val latest_report_at: String = "",
+)
+
+data class DisputeRequest(
+    val company_name: String,
+    val contact: String,
+    val message: String,
+    val nafdac_number: String = "",
 )

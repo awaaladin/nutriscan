@@ -75,6 +75,7 @@ fun SubmitReportScreen(
     var comment by remember { mutableStateOf("") }
     var whereBought by remember { mutableStateOf("") }
     var batch by remember { mutableStateOf("") }
+    var nafdac by remember { mutableStateOf("") }
     var photos by remember { mutableStateOf(listOf<File>()) }
     var isSubmitting by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -113,6 +114,13 @@ fun SubmitReportScreen(
                 value = batch,
                 onValueChange = { batch = it },
                 label = { Text("Batch / lot number (optional)") },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = nafdac,
+                onValueChange = { nafdac = it },
+                label = { Text("NAFDAC number on the pack (e.g. A4-1234)") },
                 modifier = Modifier.fillMaxWidth(),
             )
             Spacer(Modifier.height(8.dp))
@@ -161,7 +169,7 @@ fun SubmitReportScreen(
                     isSubmitting = true
                     error = null
                     scope.launch {
-                        repository.submitReport(barcode, verdict.orEmpty(), comment, whereBought, batch, photos)
+                        repository.submitReport(barcode, verdict.orEmpty(), comment, whereBought, batch, nafdac, photos)
                             .onSuccess { onSubmitted() }
                             .onFailure { error = it.message }
                         isSubmitting = false

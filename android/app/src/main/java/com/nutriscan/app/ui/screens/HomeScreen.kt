@@ -57,6 +57,7 @@ fun HomeScreen(
     onOpenSettings: () -> Unit,
     onOpenInsights: () -> Unit,
     onOpenAchievements: () -> Unit,
+    onOpenAlerts: () -> Unit,
 ) {
     val recentScans by repository.observeCachedScans().collectAsState(initial = emptyList())
 
@@ -142,6 +143,12 @@ fun HomeScreen(
                     }
                 }
                 Spacer(Modifier.height(16.dp))
+                NsOutlinedButton(
+                    text = "Fake product alerts",
+                    onClick = onOpenAlerts,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(8.dp))
                 NsOutlinedButton(
                     text = "Upgrade to Pro",
                     onClick = onOpenSubscription,

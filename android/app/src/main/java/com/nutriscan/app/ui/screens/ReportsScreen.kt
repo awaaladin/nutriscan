@@ -46,6 +46,7 @@ fun ReportsScreen(
     barcode: String,
     onBack: () -> Unit,
     onAddReport: () -> Unit,
+    onDispute: () -> Unit,
 ) {
     var data by remember { mutableStateOf<ReportsResponse?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -72,6 +73,7 @@ fun ReportsScreen(
                         IntegrityCard(current.integrity)
                         Spacer(Modifier.height(12.dp))
                         NsButton(text = "Report real or fake", onClick = onAddReport, modifier = Modifier.fillMaxWidth())
+                        TextButton(onClick = onDispute) { Text("I'm the manufacturer -- dispute this") }
                         notice?.let {
                             Spacer(Modifier.height(8.dp))
                             Text(it, style = MaterialTheme.typography.bodySmall)
@@ -120,6 +122,9 @@ private fun ReportCard(report: ProductReport, onFlag: () -> Unit) {
             }
             if (report.batch_number.isNotBlank()) {
                 Text("Batch: ${report.batch_number}", style = MaterialTheme.typography.bodySmall)
+            }
+            if (report.nafdac_number.isNotBlank()) {
+                Text("NAFDAC no.: ${report.nafdac_number}", style = MaterialTheme.typography.bodySmall)
             }
             if (report.comment.isNotBlank()) {
                 Spacer(Modifier.height(6.dp))

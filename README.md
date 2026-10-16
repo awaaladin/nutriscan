@@ -52,15 +52,33 @@ endpoints, auth + preferences, history, the subscription verify/pro-insights
 flow, and the integrity score + community reports. It is slow on Windows
 (minutes) because of password hashing in test setup.
 
-### Counterfeit protection: integrity score and community reports
+### Counterfeit protection: evidence tiers and community reports
 
-Every product carries an `integrity` object (percent, confidence, vote counts).
-`apps/community/integrity.py` blends a prior from the barcode (valid GS1
-checksum, known to Open Food Facts) with community real/fake votes. Users file
-one report per product (`POST /api/products/<barcode>/reports/`, multipart with
-up to 4 photos), can flag abusive reports, and admins hide reports from Django
-admin (hidden reports are excluded from the score). Products identified by AI
-from a photo are saved, so later scans of that barcode never call the AI again.
+Nothing can prove a single pack is genuine (fakers copy real barcodes and even
+real NAFDAC numbers), so every product carries an `integrity` object with an
+evidence **tier** and plain-language reasons, not a percentage. Tiers
+(`apps/community/integrity.py`, highest priority first): `reported_fake`,
+`disputed`, `verified`, `suspicious`, `unverified`. Credible user reports can
+override a registry match.
+
+- **NAFDAC:** a number is captured from reports or read off the pack photo by
+  the vision step, and format-checked. NAFDAC has no official API (only the
+  Greenbook search site), so an admin confirms it there and uses the
+  "Mark NAFDAC number verified" action on Product in Django admin. Only then
+  does it count. `manufacturer_verified` is set the same way.
+- **Reports:** one real/fake report per user per product, up to 4 photos,
+  where bought, batch number. Reports are weighted: photos and a batch number
+  add weight, accounts under 2 days count 0.25x and under 14 days 0.6x, and
+  users an admin marks `is_verified_reviewer` count 3x, so mass-created
+  accounts can't swing a product.
+- **Alerts:** `GET /api/alerts/` is a ranked list of products at
+  `reported_fake`/`disputed` in the last 60 days with the places they were
+  bought. There is deliberately no social feed.
+- **Moderation:** users flag abusive reports; admins hide reports (excluded from
+  scoring) and review manufacturer disputes (`POST /api/products/<barcode>/dispute/`)
+  in Django admin.
+- Products identified by AI from a photo are saved, so later scans of that
+  barcode never call the AI again.
 
 Report photos need persistent storage in production. A Vercel Blob store
 (`nutriscan-report-photos`, public) is connected to the Vercel `backend`

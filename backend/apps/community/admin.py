@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.db.models import Count
 
-from .models import ProductReport, ReportFlag, ReportPhoto
+from .models import ProductDispute, ProductReport, ReportFlag, ReportPhoto
 
 
 class ReportPhotoInline(admin.TabularInline):
@@ -34,3 +34,10 @@ class ProductReportAdmin(admin.ModelAdmin):
 
 
 admin.site.register(ReportFlag)
+
+
+@admin.register(ProductDispute)
+class ProductDisputeAdmin(admin.ModelAdmin):
+    list_display = ("product", "company_name", "contact", "status", "created_at")
+    list_filter = ("status",)
+    search_fields = ("product__barcode", "product__name", "company_name")

@@ -1,5 +1,7 @@
 package com.nutriscan.app.data.remote
 
+import com.nutriscan.app.data.model.AlertItem
+import com.nutriscan.app.data.model.DisputeRequest
 import com.nutriscan.app.data.model.HistoryItem
 import com.nutriscan.app.data.model.LoginRequest
 import com.nutriscan.app.data.model.PreferencesUpdateRequest
@@ -65,8 +67,15 @@ interface ApiService {
         @Part("comment") comment: RequestBody,
         @Part("where_bought") whereBought: RequestBody,
         @Part("batch_number") batchNumber: RequestBody,
+        @Part("nafdac_number") nafdacNumber: RequestBody,
         @Part photos: List<MultipartBody.Part>,
     ): Response<SubmitReportResponse>
+
+    @GET("api/alerts/")
+    suspend fun getAlerts(): Response<List<AlertItem>>
+
+    @POST("api/products/{barcode}/dispute/")
+    suspend fun submitDispute(@Path("barcode") barcode: String, @Body request: DisputeRequest): Response<Unit>
 
     @POST("api/reports/{id}/flag/")
     suspend fun flagReport(@Path("id") reportId: Int, @Body body: Map<String, String>): Response<Unit>

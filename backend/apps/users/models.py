@@ -13,6 +13,9 @@ class User(AbstractUser):
     is_diabetic = models.BooleanField(default=False)
     has_hypertension = models.BooleanField(default=False)
     is_pro = models.BooleanField(default=False)
+    # Pharmacists, NAFDAC staff, shop owners etc. vetted by an admin; their
+    # reports carry extra weight in the trust assessment.
+    is_verified_reviewer = models.BooleanField(default=False)
     region = models.CharField(max_length=64, default="NG")
 
     def __str__(self):

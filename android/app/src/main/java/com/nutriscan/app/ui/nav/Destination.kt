@@ -28,6 +28,12 @@ sealed class Destination(val route: String) {
         fun build(barcode: String) = "report/$barcode"
     }
 
+    data object Alerts : Destination("alerts")
+
+    data object Dispute : Destination("dispute/{barcode}") {
+        fun build(barcode: String) = "dispute/$barcode"
+    }
+
     data object ProInsights : Destination("pro-insights")
     data object History : Destination("history")
     data object Profile : Destination("profile")

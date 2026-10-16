@@ -35,6 +35,8 @@ import com.nutriscan.app.di.AppContainer
 import com.nutriscan.app.ui.MainViewModel
 import com.nutriscan.app.ui.ScanUiState
 import com.nutriscan.app.ui.screens.AchievementsScreen
+import com.nutriscan.app.ui.screens.AlertsScreen
+import com.nutriscan.app.ui.screens.DisputeScreen
 import com.nutriscan.app.ui.screens.AnalyzingScreen
 import com.nutriscan.app.ui.screens.HealthAnalysisScreen
 import com.nutriscan.app.ui.screens.HistoryScreen
@@ -162,6 +164,7 @@ fun NutriScanApp() {
                     onOpenSettings = { navController.navigate(Destination.Settings.route) },
                     onOpenInsights = { navController.navigate(Destination.Insights.route) },
                     onOpenAchievements = { navController.navigate(Destination.Achievements.route) },
+                    onOpenAlerts = { navController.navigate(Destination.Alerts.route) },
                 )
             }
             animatedComposable(Destination.Scanner.route) {
@@ -221,6 +224,23 @@ fun NutriScanApp() {
                     barcode = barcode,
                     onBack = { navController.popBackStack() },
                     onAddReport = { navController.navigate(Destination.SubmitReport.build(barcode)) },
+                    onDispute = { navController.navigate(Destination.Dispute.build(barcode)) },
+                )
+            }
+            animatedComposable(Destination.Alerts.route) {
+                AlertsScreen(
+                    repository = repository,
+                    onBack = { navController.popBackStack() },
+                    onOpenProduct = { barcode -> navController.navigate(Destination.Reports.build(barcode)) },
+                )
+            }
+            animatedComposable(Destination.Dispute.route) { backStackEntry ->
+                val barcode = backStackEntry.arguments?.getString("barcode").orEmpty()
+                DisputeScreen(
+                    repository = repository,
+                    barcode = barcode,
+                    onBack = { navController.popBackStack() },
+                    onSubmitted = { navController.popBackStack() },
                 )
             }
             animatedComposable(Destination.SubmitReport.route) { backStackEntry ->

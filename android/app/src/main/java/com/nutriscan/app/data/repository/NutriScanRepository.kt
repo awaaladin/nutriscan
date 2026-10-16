@@ -3,6 +3,8 @@ package com.nutriscan.app.data.repository
 import com.nutriscan.app.data.local.CachedScanDao
 import com.nutriscan.app.data.local.CachedScanEntity
 import com.nutriscan.app.data.local.SessionManager
+import com.nutriscan.app.data.model.AlertItem
+import com.nutriscan.app.data.model.DisputeRequest
 import com.nutriscan.app.data.model.HistoryItem
 import com.nutriscan.app.data.model.LoginRequest
 import com.nutriscan.app.data.model.PreferencesUpdateRequest
@@ -164,6 +166,7 @@ class NutriScanRepository(
         comment: String,
         whereBought: String,
         batchNumber: String,
+        nafdacNumber: String,
         photos: List<File>,
     ): Result<SubmitReportResponse> = runCatching {
         fun text(value: String) = value.toRequestBody("text/plain".toMediaType())
@@ -171,13 +174,24 @@ class NutriScanRepository(
             MultipartBody.Part.createFormData("photos", it.name, it.asRequestBody("image/jpeg".toMediaType()))
         }
         val response = api.submitReport(
-            barcode, text(verdict), text(comment), text(whereBought), text(batchNumber), photoParts,
+            barcode, text(verdict), text(comment), text(whereBought), text(batchNumber), text(nafdacNumber), photoParts,
         )
         if (!response.isSuccessful) {
-            val message = if (response.code() == 400) "Couldn't post that report -- check your photos (max 4, under 5MB each)." else friendlyErrorMessage(response.code())
+            val message = if (response.code() == 400) "Couldn't post that report -- check the NAFDAC number format (e.g. A4-1234) and your photos (max 4, under 5MB each)." else friendlyErrorMessage(response.code())
             error(message)
         }
         requireNotNull(response.body())
+    }
+
+    suspend fun alerts(): Result<List<AlertItem>> = runCatching {
+        val response = api.getAlerts()
+        if (!response.isSuccessful) error(friendlyErrorMessage(response.code()))
+        requireNotNull(response.body())
+    }
+
+    suspend fun submitDispute(barcode: String, request: DisputeRequest): Result<Unit> = runCatching {
+        val response = api.submitDispute(barcode, request)
+        if (!response.isSuccessful) error(friendlyErrorMessage(response.code()))
     }
 
     suspend fun flagReport(reportId: Int, reason: String = ""): Result<Unit> = runCatching {
