@@ -18,6 +18,9 @@ android/.idea/
 android/*.iml
 android/captures/
 android/.cxx/
+android/app/keystore.properties
+android/**/*.jks
+android/**/*.keystore
 
 # General
 .DS_Store

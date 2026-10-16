@@ -1,7 +1,20 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.google.devtools.ksp")
+}
+
+// Local, gitignored file -- see keystore.properties.example. Release signing
+// is a no-op (falls back to unsigned) until this exists, so debug builds and
+// CI checkouts without the real keystore keep working.
+val keystoreProperties = Properties()
+val keystorePropertiesFile = file("keystore.properties")
+val hasReleaseSigning = keystorePropertiesFile.exists()
+if (hasReleaseSigning) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
 android {
@@ -12,18 +25,33 @@ android {
         applicationId = "com.nutriscan.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // Deployed backend on Vercel — works over any network, no USB tether needed.
         buildConfigField("String", "API_BASE_URL", "\"https://backend-flame-theta-28.vercel.app/\"")
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+            }
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 
@@ -69,6 +97,12 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.7.7")
     implementation("androidx.core:core-splashscreen:1.0.1")
     implementation("androidx.compose.foundation:foundation")
+
+    // Google Play subscriptions
+    implementation("com.android.billingclient:billing-ktx:7.0.0")
+
+    // Report photo thumbnails
+    implementation("io.coil-kt:coil-compose:2.6.0")
 
     // Networking
     implementation("com.squareup.retrofit2:retrofit:2.11.0")

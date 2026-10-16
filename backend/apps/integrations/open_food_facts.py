@@ -3,20 +3,9 @@ from typing import Optional
 import requests
 from django.conf import settings
 
-from apps.products.medicine_names import is_known_medicine_name
+from apps.products.medicine_names import GENERIC_MEDICINE_KEYWORDS, is_known_medicine_name
 
 OFF_API_URL = "https://world.openfoodfacts.org/api/v2/product/{barcode}.json"
-
-# Open Food Facts has no dedicated medicine database -- these are the
-# category/label tags and name keywords that show up on the drug/supplement
-# listings that do leak into OFF, used to keep WHO food scoring from being
-# applied (and looking like dosage/safety advice) to a non-food item.
-_MEDICINE_KEYWORDS = (
-    "medicine", "medicines", "medication", "drug", "drugs", "pharmaceutical",
-    "pharmaceuticals", "tablet", "tablets", "capsule", "capsules",
-    "antibiotic", "antibiotics", "analgesic", "analgesics", "antimalarial",
-    "otc-drug", "prescription", "syrup-medicine", "vaccine",
-)
 
 
 def _classify_product_type(product: dict) -> str:
@@ -28,7 +17,7 @@ def _classify_product_type(product: dict) -> str:
     name = product.get("product_name") or ""
     haystack += " " + name.lower()
 
-    if any(keyword in haystack for keyword in _MEDICINE_KEYWORDS) or is_known_medicine_name(name):
+    if any(keyword in haystack for keyword in GENERIC_MEDICINE_KEYWORDS) or is_known_medicine_name(name):
         return "medicine"
     if off_type and off_type != "food":
         return "non_food"

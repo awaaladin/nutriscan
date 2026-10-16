@@ -71,7 +71,9 @@ fun SubmitProductScreen(
             }
             Spacer(Modifier.height(16.dp))
             Text(
-                "Help us add it for other shoppers — your submission is reviewed before it goes live.",
+                "Help us add it for other shoppers — your submission is reviewed before it goes live. " +
+                    "Prefer not to type it all in? Go back to the scanner and tap \"Take a photo instead\" " +
+                    "to let our AI read the label for you.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

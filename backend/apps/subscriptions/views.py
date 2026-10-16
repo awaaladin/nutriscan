@@ -1,45 +1,79 @@
-from datetime import timedelta
-
-from django.utils import timezone
-from rest_framework import permissions
+from django.conf import settings
+from django.db import IntegrityError
+from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.scans.models import Scan
 
 from .models import Subscription
+from .play_client import PlayNotConfigured, PlayVerificationError, get_verifier
 from .serializers import SubscriptionSerializer, VerifyPurchaseSerializer
+from .services import apply_play_state, refresh_pro_status
 
 
 class VerifySubscriptionView(APIView):
-    """
-    TODO: this is a stub. Before launch, replace the trust-the-client logic
-    below with a real call to the Google Play Developer API
-    (purchases.subscriptions.get) to verify purchase_token server-side, and
-    wire up Real-Time Developer Notifications for renewals/cancellations
-    instead of trusting a single client-reported verify call.
-    """
+    """Grants Pro only after Google Play confirms the purchase token.
+
+    The client sends a token from Play Billing; this looks it up with the
+    Play Developer API, derives the plan from the product Google reports,
+    acknowledges the purchase, and records the real expiry. A token can belong
+    to only one account, so a token copied from another user's device can't be
+    replayed here."""
 
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
         serializer = VerifyPurchaseSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
+        token = serializer.validated_data["purchase_token"]
 
-        duration = timedelta(days=365 if data["plan"] == Subscription.Plan.YEARLY else 30)
-        subscription, _ = Subscription.objects.update_or_create(
-            user=request.user,
-            defaults={
-                "plan": data["plan"],
-                "status": Subscription.Status.ACTIVE,
-                "play_purchase_token": data["purchase_token"],
-                "play_product_id": data["product_id"],
-                "expires_at": timezone.now() + duration,
-            },
-        )
-        request.user.is_pro = True
-        request.user.save(update_fields=["is_pro"])
+        if Subscription.objects.filter(play_purchase_token=token).exclude(user=request.user).exists():
+            return Response(
+                {"detail": "This purchase is already linked to another account."},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        verifier = get_verifier()
+        try:
+            play = verifier.get_subscription(token)
+        except PlayNotConfigured:
+            return Response(
+                {"detail": "Subscriptions aren't available right now. Please try again later."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except PlayVerificationError:
+            return Response({"detail": "We couldn't verify that purchase."}, status=status.HTTP_400_BAD_REQUEST)
+
+        plan = settings.PLAY_PRODUCT_PLANS.get(play.product_id)
+        if plan is None:
+            return Response({"detail": "Unrecognised subscription product."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not play.acknowledged:
+            try:
+                verifier.acknowledge(play.product_id, token)
+            except PlayVerificationError:
+                return Response(
+                    {"detail": "We couldn't confirm that purchase with Google yet. Please try again."},
+                    status=status.HTTP_502_BAD_GATEWAY,
+                )
+
+        try:
+            subscription, _ = Subscription.objects.update_or_create(
+                user=request.user,
+                defaults={"plan": plan, "play_purchase_token": token, "play_product_id": play.product_id},
+            )
+        except IntegrityError:
+            return Response(
+                {"detail": "This purchase is already linked to another account."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        apply_play_state(subscription, play, request.user)
+        if not request.user.is_pro:
+            return Response(
+                {"detail": "That subscription isn't active.", **SubscriptionSerializer(subscription).data},
+                status=status.HTTP_402_PAYMENT_REQUIRED,
+            )
         return Response(SubscriptionSerializer(subscription).data)
 
 
@@ -47,6 +81,7 @@ class ProInsightsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
+        refresh_pro_status(request.user)
         if not request.user.is_pro:
             return Response({"detail": "Pro subscription required."}, status=403)
 

@@ -8,6 +8,8 @@ import com.nutriscan.app.data.model.Product
 import com.nutriscan.app.data.model.ProductSubmissionRequest
 import com.nutriscan.app.data.model.RegisterRequest
 import com.nutriscan.app.data.model.RegisterResponse
+import com.nutriscan.app.data.model.ReportsResponse
+import com.nutriscan.app.data.model.SubmitReportResponse
 import com.nutriscan.app.data.model.ScanRequest
 import com.nutriscan.app.data.model.ScanResponse
 import com.nutriscan.app.data.model.SubscriptionStatus
@@ -44,9 +46,30 @@ interface ApiService {
     @Multipart
     @POST("api/products/identify/")
     suspend fun identifyProduct(
-        @Part("barcode") barcode: RequestBody,
+        // Null when the live barcode scanner never read anything at all (not
+        // just "read it but it wasn't in any DB") -- Gemini then reads the
+        // barcode digits straight off the photo instead. Retrofit omits a
+        // null @Part entirely rather than sending an empty value.
+        @Part("barcode") barcode: RequestBody?,
         @Part image: MultipartBody.Part,
     ): Response<ScanResponse>
+
+    @GET("api/products/{barcode}/reports/")
+    suspend fun getReports(@Path("barcode") barcode: String): Response<ReportsResponse>
+
+    @Multipart
+    @POST("api/products/{barcode}/reports/")
+    suspend fun submitReport(
+        @Path("barcode") barcode: String,
+        @Part("verdict") verdict: RequestBody,
+        @Part("comment") comment: RequestBody,
+        @Part("where_bought") whereBought: RequestBody,
+        @Part("batch_number") batchNumber: RequestBody,
+        @Part photos: List<MultipartBody.Part>,
+    ): Response<SubmitReportResponse>
+
+    @POST("api/reports/{id}/flag/")
+    suspend fun flagReport(@Path("id") reportId: Int, @Body body: Map<String, String>): Response<Unit>
 
     @GET("api/history/")
     suspend fun getHistory(): Response<List<HistoryItem>>

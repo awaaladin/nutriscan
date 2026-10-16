@@ -15,7 +15,9 @@ class Subscription(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="subscription")
     plan = models.CharField(max_length=16, choices=Plan.choices, default=Plan.MONTHLY)
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.EXPIRED)
-    play_purchase_token = models.CharField(max_length=512, blank=True)
+    # Unique when set: one Play purchase can back only one account. Blank is
+    # stored as NULL so many free users don't collide on "".
+    play_purchase_token = models.CharField(max_length=512, null=True, blank=True, unique=True)
     play_product_id = models.CharField(max_length=128, blank=True)
     expires_at = models.DateTimeField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)

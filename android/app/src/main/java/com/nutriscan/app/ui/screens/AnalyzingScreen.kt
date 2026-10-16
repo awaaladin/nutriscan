@@ -23,6 +23,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -79,6 +80,8 @@ fun AnalyzingScreen(
         when (val state = scanState) {
             is ScanUiState.Success -> onSuccess(state.result.product.barcode)
             is ScanUiState.NotFound -> onNotFound(state.barcode)
+            // PhotoUnclear stays on this screen (unlike NotFound) so the user
+            // can retake the shot instead of being dropped straight into manual entry.
             else -> Unit
         }
     }
@@ -109,6 +112,29 @@ fun AnalyzingScreen(
                             Text(state.message, color = NsCream.copy(alpha = 0.8f), textAlign = TextAlign.Center)
                             Spacer(Modifier.height(24.dp))
                             NsOutlinedButton(text = "Try again", onClick = onRetry)
+                        }
+                    }
+                }
+                is ScanUiState.PhotoUnclear -> {
+                    AnimatedVisibility(
+                        visible = true,
+                        enter = fadeIn(tween(350)) + slideInVertically(tween(350)) { it / 4 },
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("Couldn't recognize this product", style = MaterialTheme.typography.titleLarge, color = NsCream)
+                            Spacer(Modifier.height(12.dp))
+                            Text(
+                                "This barcode isn't in our database yet, and the photo wasn't clear enough to identify it. " +
+                                    "Try again with the label well-lit, in focus, and filling the frame.",
+                                color = NsCream.copy(alpha = 0.8f),
+                                textAlign = TextAlign.Center,
+                            )
+                            Spacer(Modifier.height(24.dp))
+                            NsOutlinedButton(text = "Retake photo", onClick = onRetry)
+                            Spacer(Modifier.height(8.dp))
+                            TextButton(onClick = { onNotFound(state.barcode) }) {
+                                Text("Enter details manually instead", color = NsGold300)
+                            }
                         }
                     }
                 }

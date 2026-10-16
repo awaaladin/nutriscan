@@ -6,3 +6,7 @@ psycopg2-binary
 requests
 python-dotenv
 dj-database-url
+Pillow
+cloudinary
+django-cloudinary-storage
+google-auth

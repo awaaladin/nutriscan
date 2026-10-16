@@ -9,6 +9,7 @@ Facts + community submissions.
 ```
 backend/    Django + DRF API, PostgreSQL, scoring engine
 android/    Kotlin + Jetpack Compose native Android app
+download/   Beta download page (nutriscan-download.vercel.app); run publish.sh
 ```
 
 ## Backend
@@ -46,9 +47,47 @@ set USE_SQLITE=1
 python manage.py test
 ```
 
-All 18 tests pass as of this scaffold, covering: the scoring engine (pure
-logic, no DB), the scan/analyze/submit endpoints, auth + preferences, history,
-and the subscription verify/pro-insights flow.
+The suite covers the scoring engine (pure logic, no DB), the scan/analyze/submit
+endpoints, auth + preferences, history, the subscription verify/pro-insights
+flow, and the integrity score + community reports. It is slow on Windows
+(minutes) because of password hashing in test setup.
+
+### Counterfeit protection: integrity score and community reports
+
+Every product carries an `integrity` object (percent, confidence, vote counts).
+`apps/community/integrity.py` blends a prior from the barcode (valid GS1
+checksum, known to Open Food Facts) with community real/fake votes. Users file
+one report per product (`POST /api/products/<barcode>/reports/`, multipart with
+up to 4 photos), can flag abusive reports, and admins hide reports from Django
+admin (hidden reports are excluded from the score). Products identified by AI
+from a photo are saved, so later scans of that barcode never call the AI again.
+
+Report photos need persistent storage in production. A Vercel Blob store
+(`nutriscan-report-photos`, public) is connected to the Vercel `backend`
+project, which injects `BLOB_READ_WRITE_TOKEN`; settings then switch to
+`apps/community/blob_storage.py`. `CLOUDINARY_URL` is supported as an
+alternative. With neither set, photos go to local disk, which Vercel wipes
+between deployments.
+
+### Subscriptions (Google Play)
+
+Pro is granted only after the backend confirms a purchase token with the Google
+Play Developer API (`apps/subscriptions/play_client.py`); the client never
+decides plan or expiry. Without `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` the verify
+endpoint returns 503 and grants nothing. Set up:
+
+1. Create subscriptions `nutriscan_pro_monthly` and `nutriscan_pro_yearly` in
+   Play Console.
+2. Create a Google Cloud service account, enable the Google Play Android
+   Developer API, and invite its email in Play Console (Users and permissions)
+   with "View financial data" and "Manage orders and subscriptions".
+3. Set `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` (the key file's contents) and, if the
+   package differs, `GOOGLE_PLAY_PACKAGE_NAME` on the host.
+4. Billing only works for builds installed from Play (use an internal testing
+   track), not plain debug installs.
+
+Renewals are picked up by re-checking with Google once a stored expiry passes;
+there is no Pub/Sub webhook yet.
 
 ### What's real vs. stubbed
 
@@ -58,9 +97,6 @@ and the subscription verify/pro-insights flow.
 - **Stubbed** (flagged with `TODO` in code):
   - `apps/integrations/llm_explanations.py` returns a deterministic template
     instead of calling a real LLM. Swap `get_explanation_provider()`.
-  - `apps/subscriptions/views.py` `VerifySubscriptionView` trusts the
-    client-reported purchase token instead of calling the Google Play
-    Developer API. Do not ship this to production as-is.
 
 ## Android
 
@@ -92,9 +128,8 @@ Profile & Health Settings, Subscription/Upgrade.
   entry fallback, Retrofit API client with JWT auth interceptor, Room offline
   cache with fallback when a scan request fails due to no connectivity,
   history filtering, profile preference toggles.
-- **Stubbed**: the Subscription screen calls `subscription/verify/` with a
-  placeholder purchase token instead of running a real Google Play Billing
-  purchase flow. Wire up the Play Billing Library before shipping Pro.
+- **Real**: the Subscription screen runs a Google Play Billing purchase and
+  sends the token to the backend for verification (see Subscriptions above).
 
 ## Before this goes to production
 

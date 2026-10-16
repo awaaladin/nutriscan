@@ -1,14 +1,18 @@
 """Bulk-import real Nigerian packaged-food products from Open Food Facts.
 
-The live OFF database has ~1000 products tagged countries=nigeria -- real
+The live OFF database has ~500+ products tagged countries=nigeria -- real
 barcodes with real nutrition data contributed by shoppers. Pulling that in
 bulk gives the scanner actual local coverage instead of relying on a single
 barcode guess landing on an entry that happens to exist.
 
-OFF's bulk search endpoint 503s if "nutriments" is requested in `fields`
-(a known quirk, not us hitting a request-size limit elsewhere), so this
-fetches barcodes cheaply in bulk, then full nutrition per-barcode through
-the existing OpenFoodFactsClient (same path a live scan uses).
+The legacy bulk search endpoints (world.openfoodfacts.org/api/v2/search and
+/cgi/search.pl) are both unreliable -- as of this writing the former 503s
+unconditionally and the latter serves an HTML maintenance page with a 200
+status. This uses OFF's newer search-a-licious service instead, which needs
+the country tag quoted (`countries_tags:"en:nigeria"`) -- the unquoted form
+silently matches zero results rather than erroring. Full nutrition per
+barcode still goes through the existing OpenFoodFactsClient (same path a
+live scan uses).
 
 Usage: python manage.py import_nigeria_products [--limit N]
 """
@@ -20,7 +24,7 @@ from django.core.management.base import BaseCommand
 from apps.integrations.open_food_facts import OpenFoodFactsClient
 from apps.products.models import Product
 
-SEARCH_URL = "https://world.openfoodfacts.org/api/v2/search"
+SEARCH_URL = "https://search.openfoodfacts.org/search"
 HEADERS = {"User-Agent": "NutriScan/0.1 (contact: nutriscan-app@example.com)"}
 
 
@@ -45,7 +49,7 @@ class Command(BaseCommand):
                     response = requests.get(
                         SEARCH_URL,
                         params={
-                            "countries_tags_en": "nigeria",
+                            "q": 'countries_tags:"en:nigeria"',
                             "page": page,
                             "page_size": page_size,
                             "fields": "code",
@@ -54,7 +58,7 @@ class Command(BaseCommand):
                         headers=HEADERS,
                     )
                     response.raise_for_status()
-                    products = response.json().get("products", [])
+                    products = response.json().get("hits", [])
                     break
                 except requests.RequestException as exc:
                     wait = 3 * (attempt + 1)

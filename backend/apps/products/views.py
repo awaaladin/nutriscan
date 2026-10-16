@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -176,19 +178,32 @@ class ProductSubmissionView(APIView):
 
 
 class IdentifyProductView(APIView):
-    """Fallback when a barcode isn't in Open Food Facts or our local table:
-    identify the product from a photo of it instead (see
-    apps.integrations.vision_identify). Best-effort -- results are marked
-    is_estimated so the client can disclose that the nutrition numbers came
-    from Gemini reading the label photo, not a verified source."""
+    """Identifies a product from a photo via Gemini (see
+    apps.integrations.vision_identify). Two callers hit this:
+
+    1. A live barcode scan that came back NotFound -- barcode is the camera's
+       reading, passed along so the photo result still attaches to it.
+    2. The camera's live scanner never read a barcode at all (damaged label,
+       bad angle, no barcode in frame) -- barcode is blank, and Gemini reads
+       the printed digits straight out of the photo instead, same as a human
+       squinting at the package would.
+
+    If neither source yields a barcode, a synthetic one is generated so the
+    required/unique Product.barcode field still has something to key on --
+    this means two such photos of the same real product (both unreadable)
+    will create two separate rows rather than merging, a known limitation.
+
+    Best-effort either way -- results are marked is_estimated so the client
+    can disclose that the nutrition numbers came from Gemini reading the
+    label photo, not a verified source."""
 
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        barcode = request.data.get("barcode", "")
+        client_barcode = request.data.get("barcode", "").strip()
         image = request.FILES.get("image")
-        if not barcode or not image:
-            return Response({"detail": "barcode and image are required."}, status=status.HTTP_400_BAD_REQUEST)
+        if not image:
+            return Response({"detail": "image is required."}, status=status.HTTP_400_BAD_REQUEST)
 
         result = identify_product_from_image(image.read(), image.content_type or "image/jpeg")
         if result is None:
@@ -196,10 +211,12 @@ class IdentifyProductView(APIView):
                 {
                     "detail": "Couldn't identify this product from the photo.",
                     "action": "submit_product",
-                    "barcode": barcode,
+                    "barcode": client_barcode,
                 },
                 status=status.HTTP_404_NOT_FOUND,
             )
+
+        barcode = client_barcode or (result.get("barcode") or "").strip() or f"AI-{uuid4().hex[:12]}"
 
         product_type = result.get("product_type", "food")
         product, _ = Product.objects.update_or_create(

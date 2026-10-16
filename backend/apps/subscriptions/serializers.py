@@ -10,6 +10,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
 
 
 class VerifyPurchaseSerializer(serializers.Serializer):
-    plan = serializers.ChoiceField(choices=Subscription.Plan.choices)
-    purchase_token = serializers.CharField()
-    product_id = serializers.CharField()
+    # The plan is derived server-side from the product Google reports, so the
+    # client can't claim a plan it didn't pay for.
+    purchase_token = serializers.CharField(max_length=512)
+    product_id = serializers.CharField(max_length=128)

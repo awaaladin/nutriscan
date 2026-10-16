@@ -20,6 +20,14 @@ sealed class Destination(val route: String) {
         fun build(barcode: String) = "submit/$barcode"
     }
 
+    data object Reports : Destination("reports/{barcode}") {
+        fun build(barcode: String) = "reports/$barcode"
+    }
+
+    data object SubmitReport : Destination("report/{barcode}") {
+        fun build(barcode: String) = "report/$barcode"
+    }
+
     data object ProInsights : Destination("pro-insights")
     data object History : Destination("history")
     data object Profile : Destination("profile")

@@ -2,6 +2,8 @@ from rest_framework import generics, permissions
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from apps.subscriptions.services import refresh_pro_status
+
 from .serializers import PreferencesSerializer, RegisterSerializer
 
 
@@ -29,4 +31,7 @@ class PreferencesView(generics.RetrieveUpdateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_object(self):
+        # Re-checks Pro against Google when a stored expiry has passed, so
+        # renewals and lapses show up without needing a push webhook.
+        refresh_pro_status(self.request.user)
         return self.request.user
