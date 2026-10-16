@@ -9,6 +9,7 @@ Facts + community submissions.
 ```
 backend/    Django + DRF API, PostgreSQL, scoring engine
 android/    Kotlin + Jetpack Compose native Android app
+download/   Beta download page (nutriscan-download.vercel.app); run publish.sh
 ```
 
 ## Backend

@@ -1,0 +1,4 @@
+# The APK is a build artifact (~40MB); publish.sh copies the latest one in.
+nutriscan.apk
+.vercel
+.env*

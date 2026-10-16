@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NutriScan — Download</title>
+<style>
+  :root {
+    --emerald-900: #0b2e22;
+    --emerald-700: #0e6b4f;
+    --emerald-500: #1b8a5a;
+    --gold-500: #c9a227;
+    --cream: #f7f6f2;
+    --charcoal: #171c1a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    background: linear-gradient(160deg, var(--emerald-900), #123d2c, var(--emerald-900));
+    color: var(--cream);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .card {
+    max-width: 440px;
+    width: 100%;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 24px;
+    padding: 36px 32px;
+    text-align: center;
+  }
+  .badge {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 20px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+  }
+  h1 { font-size: 24px; margin: 0 0 8px; }
+  p.sub { color: rgba(247,246,242,0.75); margin: 0 0 28px; line-height: 1.5; }
+  .download-btn {
+    display: inline-block;
+    width: 100%;
+    background: var(--gold-500);
+    color: var(--charcoal);
+    font-weight: 600;
+    font-size: 16px;
+    padding: 16px 20px;
+    border-radius: 14px;
+    text-decoration: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .download-btn:active { transform: scale(0.98); }
+  .meta { margin-top: 14px; font-size: 13px; color: rgba(247,246,242,0.6); }
+  .steps {
+    margin-top: 32px;
+    text-align: left;
+    background: rgba(255,255,255,0.04);
+    border-radius: 16px;
+    padding: 18px 20px;
+  }
+  .steps h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--gold-500); margin: 0 0 12px; }
+  .steps ol { margin: 0; padding-left: 20px; line-height: 1.7; font-size: 14px; color: rgba(247,246,242,0.85); }
+  .footer-note { margin-top: 24px; font-size: 12px; color: rgba(247,246,242,0.5); line-height: 1.5; }
+  .legal-links { margin-top: 16px; font-size: 12px; }
+  .legal-links a { color: rgba(247,246,242,0.7); text-decoration: underline; margin: 0 8px; }
+  .powered-by { margin-top: 28px; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(247,246,242,0.4); }
+  .powered-by strong { color: var(--gold-500); }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="badge">🥗</div>
+    <h1>NutriScan</h1>
+    <p class="sub">Scan any packaged food's barcode for an instant WHO-based health score and diabetic risk read.</p>
+    <a class="download-btn" href="./nutriscan.apk" download>Download for Android</a>
+    <div class="meta">v0.2.0 · Beta build · Android 8.0+</div>
+    <div class="steps">
+      <h2>After downloading</h2>
+      <ol>
+        <li>Open the downloaded file from your notifications or Downloads folder.</li>
+        <li>If Chrome warns about unknown apps, tap <strong>Settings</strong> → allow Chrome to install unknown apps → go back and tap <strong>Install</strong>.</li>
+        <li>Open NutriScan and create an account to start scanning.</li>
+      </ol>
+    </div>
+    <div class="footer-note">
+      This is a beta build shared directly for testing, ahead of the Play Store release.
+      Educational health information only — not medical advice.
+    </div>
+    <div class="legal-links">
+      <a href="./terms.html">Terms &amp; Conditions</a>·<a href="./privacy.html">Privacy Policy</a>
+    </div>
+    <div class="powered-by">Powered by <strong>JCN</strong></div>
+  </div>
+</body>
+</html>
