@@ -43,6 +43,8 @@ import com.nutriscan.app.ui.screens.InsightsScreen
 import com.nutriscan.app.ui.screens.LoginScreen
 import com.nutriscan.app.ui.screens.OnboardingScreen
 import com.nutriscan.app.ui.screens.ProInsightsScreen
+import com.nutriscan.app.ui.screens.ReportsScreen
+import com.nutriscan.app.ui.screens.SubmitReportScreen
 import com.nutriscan.app.ui.screens.ProductDetailScreen
 import com.nutriscan.app.ui.screens.ProfileScreen
 import com.nutriscan.app.ui.screens.ScannerScreen
@@ -189,6 +191,7 @@ fun NutriScanApp() {
                 ProductDetailScreen(
                     viewModel = mainViewModel,
                     onBack = { navController.popBackStack(Destination.Home.route, inclusive = false) },
+                    onOpenReports = { barcode -> navController.navigate(Destination.Reports.build(barcode)) },
                     onViewAnalysis = {
                         val currentState = mainViewModel.scanState.value
                         val barcode = (currentState as? ScanUiState.Success)?.result?.product?.barcode.orEmpty()
@@ -209,6 +212,24 @@ fun NutriScanApp() {
                     barcode = barcode,
                     onBack = { navController.popBackStack(Destination.Home.route, inclusive = false) },
                     onSubmitted = { navController.popBackStack(Destination.Home.route, inclusive = false) },
+                )
+            }
+            animatedComposable(Destination.Reports.route) { backStackEntry ->
+                val barcode = backStackEntry.arguments?.getString("barcode").orEmpty()
+                ReportsScreen(
+                    repository = repository,
+                    barcode = barcode,
+                    onBack = { navController.popBackStack() },
+                    onAddReport = { navController.navigate(Destination.SubmitReport.build(barcode)) },
+                )
+            }
+            animatedComposable(Destination.SubmitReport.route) { backStackEntry ->
+                val barcode = backStackEntry.arguments?.getString("barcode").orEmpty()
+                SubmitReportScreen(
+                    repository = repository,
+                    barcode = barcode,
+                    onBack = { navController.popBackStack() },
+                    onSubmitted = { navController.popBackStack() },
                 )
             }
             animatedComposable(Destination.ProInsights.route) {

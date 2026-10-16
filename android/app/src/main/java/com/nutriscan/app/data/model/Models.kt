@@ -16,7 +16,38 @@ data class Product(
     val ingredients_text: String? = null,
     val additives: List<String> = emptyList(),
     val image_url: String? = null,
+    // Null on responses from older backends.
+    val integrity: Integrity? = null,
 )
+
+/** How likely our data says a product is genuine (0-100), blending barcode
+ * signals with community real/fake votes. [confidence] is low/medium/high by
+ * vote count -- a low-confidence percentage is mostly the barcode prior. */
+data class Integrity(
+    val percent: Int,
+    val confidence: String,
+    val real_votes: Int,
+    val fake_votes: Int,
+    val checksum_valid: Boolean,
+    val in_independent_db: Boolean,
+)
+
+data class ReportPhoto(val id: Int, val image: String)
+
+data class ProductReport(
+    val id: Int,
+    val username: String,
+    val verdict: String,
+    val comment: String = "",
+    val where_bought: String = "",
+    val batch_number: String = "",
+    val photos: List<ReportPhoto> = emptyList(),
+    val created_at: String = "",
+)
+
+data class ReportsResponse(val integrity: Integrity, val reports: List<ProductReport>)
+
+data class SubmitReportResponse(val report: ProductReport, val integrity: Integrity)
 
 data class ScanResponse(
     val product: Product,
@@ -89,8 +120,9 @@ data class ProductSubmissionRequest(
     val ingredients_text: String,
 )
 
+/** Only the token and product go to the server -- it asks Google Play what was
+ * actually bought, so the client can't claim a plan or expiry itself. */
 data class VerifyPurchaseRequest(
-    val plan: String,
     val purchase_token: String,
     val product_id: String,
 )

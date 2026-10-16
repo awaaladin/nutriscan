@@ -17,6 +17,7 @@ sealed class ScanUiState {
     data object Loading : ScanUiState()
     data class Success(val result: ScanResponse) : ScanUiState()
     data class NotFound(val barcode: String) : ScanUiState()
+    data class PhotoUnclear(val barcode: String) : ScanUiState()
     data class NonFood(val productName: String, val message: String) : ScanUiState()
     data class Offline(val cached: CachedScanEntity) : ScanUiState()
     data class Error(val message: String) : ScanUiState()
@@ -37,19 +38,38 @@ class MainViewModel(private val repository: NutriScanRepository) : ViewModel() {
         viewModelScope.launch {
             _scanState.value = ScanUiState.Loading
             val outcome = repository.scan(barcode)
-            val resolved = if (outcome is ScanOutcome.NotFound && photoFile != null) {
-                repository.identifyProduct(barcode, photoFile)
+            val triedPhoto = outcome is ScanOutcome.NotFound && photoFile != null
+            val resolved = if (triedPhoto) {
+                repository.identifyProduct(barcode, photoFile!!)
             } else {
                 outcome
             }
-            _scanState.value = when (resolved) {
-                is ScanOutcome.Success -> ScanUiState.Success(resolved.result)
-                is ScanOutcome.NonFood -> ScanUiState.NonFood(resolved.productName, resolved.message)
-                is ScanOutcome.NotFound -> ScanUiState.NotFound(resolved.barcode)
-                is ScanOutcome.OfflineCached -> ScanUiState.Offline(resolved.cached)
-                is ScanOutcome.Error -> ScanUiState.Error(resolved.message)
-            }
+            _scanState.value = resolved.toUiState(triedPhoto)
         }
+    }
+
+    /** Entry point when the live barcode scanner never read anything at all --
+     * the user chose to photograph the product directly instead of hunting
+     * for an angle that scans. There's no barcode to fall back from, so this
+     * skips straight to Gemini reading the photo (barcode included, if it's
+     * visible in frame -- see apps.integrations.vision_identify). */
+    fun onPhotoCapturedWithoutBarcode(photoFile: File) {
+        if (_scanState.value is ScanUiState.Loading) return
+        viewModelScope.launch {
+            _scanState.value = ScanUiState.Loading
+            val resolved = repository.identifyProduct(barcode = null, photoFile)
+            _scanState.value = resolved.toUiState(triedPhoto = true)
+        }
+    }
+
+    private fun ScanOutcome.toUiState(triedPhoto: Boolean): ScanUiState = when (this) {
+        is ScanOutcome.Success -> ScanUiState.Success(result)
+        is ScanOutcome.NonFood -> ScanUiState.NonFood(productName, message)
+        // Only a photo attempt gets the "retake it" message -- a plain
+        // NotFound with no photo to fall back on goes straight to manual entry.
+        is ScanOutcome.NotFound -> if (triedPhoto) ScanUiState.PhotoUnclear(barcode) else ScanUiState.NotFound(barcode)
+        is ScanOutcome.OfflineCached -> ScanUiState.Offline(cached)
+        is ScanOutcome.Error -> ScanUiState.Error(message)
     }
 
     fun resetScanState() {

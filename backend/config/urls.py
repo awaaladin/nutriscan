@@ -2,6 +2,10 @@ from django.contrib import admin
 from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
+from django.conf import settings
+from django.conf.urls.static import static
+
+from apps.community.views import ProductReportsView, ReportFlagView
 from apps.products.views import (
     AnalyzeView,
     IdentifyProductView,
@@ -22,9 +26,14 @@ urlpatterns = [
     path("api/products/submit/", ProductSubmissionView.as_view(), name="product-submit"),
     path("api/products/identify/", IdentifyProductView.as_view(), name="product-identify"),
     path("api/products/<str:barcode>/", ProductDetailView.as_view(), name="product-detail"),
+    path("api/products/<str:barcode>/reports/", ProductReportsView.as_view(), name="product-reports"),
+    path("api/reports/<int:report_id>/flag/", ReportFlagView.as_view(), name="report-flag"),
     path("api/analyze/", AnalyzeView.as_view(), name="analyze"),
     path("api/history/", HistoryListView.as_view(), name="history"),
     path("api/user/preferences/", PreferencesView.as_view(), name="preferences"),
     path("api/subscription/verify/", VerifySubscriptionView.as_view(), name="subscription-verify"),
     path("api/pro/insights/", ProInsightsView.as_view(), name="pro-insights"),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

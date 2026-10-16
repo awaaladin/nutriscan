@@ -52,6 +52,7 @@ import androidx.core.content.ContextCompat
 import com.nutriscan.app.scanner.BarcodeAnalyzer
 import com.nutriscan.app.ui.MainViewModel
 import com.nutriscan.app.ui.components.NsButton
+import com.nutriscan.app.ui.components.NsOutlinedButton
 import java.io.File
 
 @Composable
@@ -108,6 +109,32 @@ fun ScannerScreen(
                 override fun onError(exc: ImageCaptureException) {
                     viewModel.onBarcodeScanned(barcode)
                     onBarcodeCaptured()
+                }
+            },
+        )
+    }
+
+    /** For when the barcode never scans at all -- no reading to fall back
+     * from, so this skips straight to Gemini reading the photo (it'll pull
+     * the barcode digits off the label itself if they're visible). */
+    fun capturePhotoWithoutBarcode() {
+        if (hasHandledResult) return
+        val captureUseCase = imageCapture ?: return
+        hasHandledResult = true
+
+        val photoFile = File(context.cacheDir, "scan_${System.currentTimeMillis()}.jpg")
+        val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
+        captureUseCase.takePicture(
+            outputOptions,
+            ContextCompat.getMainExecutor(context),
+            object : ImageCapture.OnImageSavedCallback {
+                override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+                    viewModel.onPhotoCapturedWithoutBarcode(photoFile)
+                    onBarcodeCaptured()
+                }
+
+                override fun onError(exc: ImageCaptureException) {
+                    hasHandledResult = false
                 }
             },
         )
@@ -196,6 +223,21 @@ fun ScannerScreen(
                             RoundedCornerShape(20.dp),
                         ),
                 )
+                Column(
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        "Barcode won't scan?",
+                        color = Color.White.copy(alpha = 0.85f),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    NsOutlinedButton(
+                        text = "Take a photo instead",
+                        onClick = { capturePhotoWithoutBarcode() },
+                    )
+                }
             } else {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text("Camera permission is required to scan barcodes.")

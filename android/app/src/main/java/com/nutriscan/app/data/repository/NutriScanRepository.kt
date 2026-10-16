@@ -10,6 +10,8 @@ import com.nutriscan.app.data.model.ProInsights
 import com.nutriscan.app.data.model.ProductSubmissionRequest
 import com.nutriscan.app.data.model.RegisterRequest
 import com.nutriscan.app.data.model.RegisterResponse
+import com.nutriscan.app.data.model.ReportsResponse
+import com.nutriscan.app.data.model.SubmitReportResponse
 import com.nutriscan.app.data.model.ScanRequest
 import com.nutriscan.app.data.model.ScanResponse
 import com.nutriscan.app.data.model.SubscriptionStatus
@@ -102,11 +104,15 @@ class NutriScanRepository(
         }
     }
 
-    /** Fallback when [scan] comes back NotFound: has Gemini identify the
-     * product from a photo of it instead of asking the user to type in
-     * nutrition facts by hand. Best-effort -- see ScanResponse.is_estimated. */
-    suspend fun identifyProduct(barcode: String, photoFile: File): ScanOutcome = try {
-        val barcodePart = barcode.toRequestBody("text/plain".toMediaType())
+    /** Identifies a product from a photo via Gemini instead of asking the user
+     * to type in nutrition facts by hand. [barcode] is the camera's live
+     * reading when this is a fallback from [scan] coming back NotFound, or
+     * null when the live scanner never read a barcode at all and the user
+     * chose to photograph the product directly -- Gemini then reads the
+     * barcode straight off the photo (see apps.integrations.vision_identify
+     * server-side). Best-effort -- see ScanResponse.is_estimated. */
+    suspend fun identifyProduct(barcode: String?, photoFile: File): ScanOutcome = try {
+        val barcodePart = barcode?.takeIf { it.isNotBlank() }?.toRequestBody("text/plain".toMediaType())
         val imagePart = MultipartBody.Part.createFormData(
             "image",
             photoFile.name,
@@ -119,9 +125,12 @@ class NutriScanRepository(
                 if (body.product_type != null && body.product_type != "food") {
                     ScanOutcome.NonFood(body.product.name, body.detail.orEmpty())
                 } else if (body.score != null && body.label != null && body.diabetic_risk != null) {
+                    // body.product.barcode is the one actually stored server-side --
+                    // when [barcode] was null, that's either what Gemini read off the
+                    // photo or a synthetic one, never the (absent) client value.
                     cachedScanDao.upsert(
                         CachedScanEntity(
-                            barcode = barcode,
+                            barcode = body.product.barcode,
                             productName = body.product.name,
                             brand = body.product.brand,
                             score = body.score,
@@ -133,14 +142,48 @@ class NutriScanRepository(
                     )
                     ScanOutcome.Success(body)
                 } else {
-                    ScanOutcome.NotFound(barcode)
+                    ScanOutcome.NotFound(barcode.orEmpty())
                 }
             }
-            response.code() == 404 -> ScanOutcome.NotFound(barcode)
+            response.code() == 404 -> ScanOutcome.NotFound(barcode.orEmpty())
             else -> ScanOutcome.Error(friendlyErrorMessage(response.code()))
         }
     } catch (e: IOException) {
         ScanOutcome.Error("You're offline, so NutriScan can't identify this product from a photo right now.")
+    }
+
+    suspend fun reports(barcode: String): Result<ReportsResponse> = runCatching {
+        val response = api.getReports(barcode)
+        if (!response.isSuccessful) error(friendlyErrorMessage(response.code()))
+        requireNotNull(response.body())
+    }
+
+    suspend fun submitReport(
+        barcode: String,
+        verdict: String,
+        comment: String,
+        whereBought: String,
+        batchNumber: String,
+        photos: List<File>,
+    ): Result<SubmitReportResponse> = runCatching {
+        fun text(value: String) = value.toRequestBody("text/plain".toMediaType())
+        val photoParts = photos.map {
+            MultipartBody.Part.createFormData("photos", it.name, it.asRequestBody("image/jpeg".toMediaType()))
+        }
+        val response = api.submitReport(
+            barcode, text(verdict), text(comment), text(whereBought), text(batchNumber), photoParts,
+        )
+        if (!response.isSuccessful) {
+            val message = if (response.code() == 400) "Couldn't post that report -- check your photos (max 4, under 5MB each)." else friendlyErrorMessage(response.code())
+            error(message)
+        }
+        requireNotNull(response.body())
+    }
+
+    suspend fun flagReport(reportId: Int, reason: String = ""): Result<Unit> = runCatching {
+        val response = api.flagReport(reportId, mapOf("reason" to reason))
+        if (response.code() == 400) error("You can't flag your own report.")
+        if (!response.isSuccessful) error(friendlyErrorMessage(response.code()))
     }
 
     fun observeCachedScans(): Flow<List<CachedScanEntity>> = cachedScanDao.observeAll()

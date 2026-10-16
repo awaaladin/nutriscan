@@ -29,6 +29,7 @@ RESPONSE_SCHEMA = {
         "brand": {"type": "string"},
         "product_type": {"type": "string", "enum": ["food", "medicine", "non_food"]},
         "confidence": {"type": "number"},
+        "barcode": {"type": "string", "nullable": True},
         "ingredients_text": {"type": "string"},
         "calories_kcal": {"type": "number", "nullable": True},
         "sugar_g": {"type": "number", "nullable": True},
@@ -49,6 +50,11 @@ Rules:
 - Set identified=false if you cannot tell what the product is at all.
 - product_type is "medicine" for any drug/pharmaceutical, "food" for packaged food/drink,
   "non_food" for anything else (cosmetics, household goods, etc).
+- If a barcode (the printed digits under the black bars, usually 8-13 digits) is visible
+  anywhere in the photo, transcribe those digits exactly into barcode. This may be the
+  only barcode reading available if the camera's live scanner couldn't lock onto it --
+  read it directly from the printed numbers, not by interpreting the bar pattern. Use
+  null if no barcode is visible or the digits aren't legible.
 - Only fill in numeric nutrition fields if you can actually read them in the photo --
   use null rather than guessing a plausible-sounding number.
 - Nutrition values must be per 100g or 100ml, converting from per-serving if needed.
