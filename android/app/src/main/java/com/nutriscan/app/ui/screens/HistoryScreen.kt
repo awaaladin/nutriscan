@@ -4,6 +4,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -70,7 +72,7 @@ fun HistoryScreen(repository: NutriScanRepository, onBack: () -> Unit, onOpenSca
 
     NsScreenScaffold(title = "History", onBack = onBack) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
-            Row {
+            Row(modifier = Modifier.horizontalScroll(rememberScrollState())) {
                 HistoryFilter.entries.forEach { option ->
                     FilterChip(
                         selected = filter == option,

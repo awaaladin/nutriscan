@@ -18,17 +18,20 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.Forum
 import androidx.compose.material.icons.rounded.Stop
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -81,6 +84,34 @@ fun ProductDetailScreen(
     // Speak the verdict automatically if the user turned that on.
     LaunchedEffect(result?.product?.barcode, autoRead) {
         if (autoRead && result != null) speaker.speak(spokenSummary(result))
+    }
+
+    // A product with no score can't be judged, so ask for the missing piece immediately
+    // rather than leaving the user to find the card. Once per visit.
+    var promptDismissed by rememberSaveable(result?.product?.barcode) { mutableStateOf(false) }
+    if (result != null && result.label == "Incomplete" && !promptDismissed) {
+        AlertDialog(
+            onDismissRequest = { promptDismissed = true },
+            title = { Text("We need the nutrition table") },
+            text = {
+                Column {
+                    Text(
+                        "We couldn't find this product's nutrition values, so we can't give it a health score yet. " +
+                            "Take a photo of the nutrition table on the pack and we'll read it and score the product -- " +
+                            "and next time it's instant.",
+                    )
+                    TextButton(onClick = { promptDismissed = true; onTypeValues(result.product.barcode) }) {
+                        Text("Type the values instead")
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { promptDismissed = true; onPhotographTable(result.product.barcode) }) {
+                    Text("Photograph the table")
+                }
+            },
+            dismissButton = { TextButton(onClick = { promptDismissed = true }) { Text("Later") } },
+        )
     }
 
     NsScreenScaffold(title = "Product", onBack = { speaker.stop(); onBack() }) { padding ->

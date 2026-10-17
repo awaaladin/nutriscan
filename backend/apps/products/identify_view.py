@@ -13,6 +13,7 @@ from apps.scoring.engine import compute_health_score
 
 from .barcodes import find_product_by_barcode
 from .identify_helpers import (
+    borrow_nutrition,
     copy_from_twin,
     inherit_nafdac_verification,
     product_for_nafdac,
@@ -39,6 +40,7 @@ def scored_response(request, product: Product, *, source: str, notice: str = "")
             }
         )
 
+    borrow_nutrition(product)  # a matching product on file may already hold the nutrition table
     health_result = compute_health_score(_nutrition_from_product(product), product.ingredients_text)
     explanation = _get_or_create_explanation(product, health_result)
     scan = Scan.objects.create(

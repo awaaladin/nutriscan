@@ -11,6 +11,7 @@ from apps.scans.models import Scan
 from apps.scoring.engine import HealthScoreResult, NutritionFacts, compute_health_score
 
 from .barcodes import find_product_by_barcode
+from .identify_helpers import borrow_nutrition
 from .medicine_names import is_known_medicine_name
 from .models import CachedExplanation, Product
 from .serializers import (
@@ -128,6 +129,7 @@ class ScanView(APIView):
                 }
             )
 
+        borrow_nutrition(product)  # a matching product on file may already hold the nutrition table
         result = compute_health_score(_nutrition_from_product(product), product.ingredients_text)
         explanation = _get_or_create_explanation(product, result)
 
