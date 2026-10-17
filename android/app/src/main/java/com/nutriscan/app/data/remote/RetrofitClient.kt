@@ -17,11 +17,12 @@ object RetrofitClient {
             .addInterceptor(AuthInterceptor(sessionManager))
             .authenticator(TokenAuthenticator(sessionManager, BuildConfig.API_BASE_URL))
             .addInterceptor(logging)
-            // Photo-identification uploads an image and waits on a Gemini vision
-            // call server-side, which can take noticeably longer than a plain scan.
+            // Photo research uploads several photos and waits on an AI call that the
+            // server may retry (up to 3 x 30s worst case) -- the read timeout must
+            // outlast that or a slow-but-working request is reported as a failure.
             .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(45, TimeUnit.SECONDS)
-            .writeTimeout(45, TimeUnit.SECONDS)
+            .readTimeout(110, TimeUnit.SECONDS)
+            .writeTimeout(60, TimeUnit.SECONDS)
             .build()
 
         val retrofit = Retrofit.Builder()

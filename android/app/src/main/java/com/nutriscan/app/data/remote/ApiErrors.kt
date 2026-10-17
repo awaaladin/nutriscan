@@ -31,11 +31,12 @@ fun parseServerError(response: Response<*>): ServerError? = try {
     null // body wasn't JSON (e.g. a gateway error page)
 }
 
-/** An error message that says what happened, with the HTTP status for the cases
- * where the server gave no explanation of its own. */
-fun describeFailure(response: Response<*>): String {
-    parseServerError(response)?.detail?.takeIf { it.isNotBlank() }?.let { return it }
-    val code = response.code()
+/** An error message that says what happened. Pass the already-parsed [error]
+ * when the caller has read the body (it can only be read once); otherwise it is
+ * parsed here. Falls back to the HTTP status for cases where the server gave no
+ * explanation of its own. */
+fun describeFailure(code: Int, error: ServerError?): String {
+    error?.detail?.takeIf { it.isNotBlank() }?.let { return it }
     return when (code) {
         504 -> "The server took too long to respond (timeout, HTTP 504). Please try again."
         502, 503 -> "The server is temporarily unavailable (HTTP $code). Please try again shortly."
@@ -43,3 +44,5 @@ fun describeFailure(response: Response<*>): String {
         else -> "${friendlyErrorMessage(code)} (HTTP $code)"
     }
 }
+
+fun describeFailure(response: Response<*>): String = describeFailure(response.code(), parseServerError(response))

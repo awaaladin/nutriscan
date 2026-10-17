@@ -31,6 +31,7 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import java.io.IOException
+import java.net.SocketTimeoutException
 
 sealed class ScanOutcome {
     data class Success(val result: ScanResponse) : ScanOutcome()
@@ -153,15 +154,22 @@ class NutriScanRepository(
                 }
             }
             else -> {
-                val error = parseServerError(response)
+                val error = parseServerError(response) // read once: the body can't be re-read
                 ScanOutcome.IdentifyFailed(
                     barcode.orEmpty(),
-                    describeFailure(response),
+                    describeFailure(response.code(), error),
                     // Without structured info, assume photos might help for a client error.
                     retake = error?.retake ?: (response.code() in 400..499),
                 )
             }
         }
+    } catch (e: SocketTimeoutException) {
+        ScanOutcome.IdentifyFailed(
+            barcode.orEmpty(),
+            "The server is taking too long to research this product. Your connection may be slow -- " +
+                "try again, or retake the photos so they upload faster.",
+            retake = false,
+        )
     } catch (e: IOException) {
         ScanOutcome.Error("No connection: the photos couldn't be sent. Check your internet and try again.")
     }

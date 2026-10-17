@@ -20,6 +20,7 @@ generic "couldn't identify".
 import base64
 import json
 import os
+import time
 from typing import List, Tuple
 
 import requests
@@ -101,21 +102,11 @@ def identify_product_from_images(images: List[Tuple[bytes, str]]) -> dict:
         for data, mime in images
     ]
 
-    try:
-        response = requests.post(
-            API_URL.format(model=model),
-            params={"key": api_key},
-            json={
-                "contents": [{"parts": parts}],
-                "generationConfig": {"responseMimeType": "application/json", "responseSchema": RESPONSE_SCHEMA},
-            },
-            timeout=45,
-        )
-    except requests.Timeout:
-        raise IdentifyError("ai_timeout", "The AI took too long to read the photos. Please try again.")
-    except requests.RequestException:
-        raise IdentifyError("ai_unreachable", "The server couldn't reach the AI service. Please try again shortly.")
-
+    payload = {
+        "contents": [{"parts": parts}],
+        "generationConfig": {"responseMimeType": "application/json", "responseSchema": RESPONSE_SCHEMA},
+    }
+    response = _post_with_retries(API_URL.format(model=model), api_key, payload)
     if response.status_code != 200:
         raise _http_error(response)
 
@@ -138,6 +129,35 @@ def identify_product_from_images(images: List[Tuple[bytes, str]]) -> dict:
             retake=True,
         )
     return result
+
+
+RETRYABLE_STATUSES = {429, 500, 502, 503, 504}
+MAX_ATTEMPTS = 3
+
+
+def _post_with_retries(url: str, api_key: str, payload: dict):
+    """Google's API briefly returns 429/5xx (overloaded, rate-limited) or drops
+    a connection even when nothing is wrong with the request. One of those must
+    not fail a scan the user spent time photographing, so these are retried with
+    a short backoff; permanent errors (bad key, bad request, retired model)
+    return immediately. Raises IdentifyError if every attempt failed to connect."""
+    last_error = None
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        try:
+            response = requests.post(url, params={"key": api_key}, json=payload, timeout=30)
+        except requests.Timeout:
+            last_error = IdentifyError("ai_timeout", "The AI took too long to read the photos. Please try again.")
+        except requests.RequestException:
+            last_error = IdentifyError(
+                "ai_unreachable", "The server couldn't reach the AI service. Please try again shortly."
+            )
+        else:
+            if response.status_code not in RETRYABLE_STATUSES or attempt == MAX_ATTEMPTS:
+                return response
+            last_error = None
+        if attempt < MAX_ATTEMPTS:
+            time.sleep(1.5 * attempt)
+    raise last_error
 
 
 def _http_error(response) -> IdentifyError:
