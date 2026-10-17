@@ -18,6 +18,7 @@ import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.QuestionAnswer
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.rounded.QrCodeScanner
 import androidx.compose.material3.Card
@@ -41,6 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.nutriscan.app.data.repository.NutriScanRepository
 import com.nutriscan.app.ui.components.HealthLabelChip
+import com.nutriscan.app.ui.components.LogoLockup
 import com.nutriscan.app.ui.components.NsButton
 import com.nutriscan.app.ui.components.NsOutlinedButton
 import com.nutriscan.app.ui.theme.NsEmerald500
@@ -58,13 +60,14 @@ fun HomeScreen(
     onOpenInsights: () -> Unit,
     onOpenAchievements: () -> Unit,
     onOpenAlerts: () -> Unit,
+    onOpenAssistant: () -> Unit,
 ) {
     val recentScans by repository.observeCachedScans().collectAsState(initial = emptyList())
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("NutriScan") },
+                title = { LogoLockup() },
                 actions = {
                     IconButton(onClick = onOpenInsights) {
                         Icon(Icons.Outlined.Notifications, contentDescription = "Insights")
@@ -82,6 +85,12 @@ fun HomeScreen(
                     onClick = {},
                     label = { Text("Home") },
                     icon = { Icon(Icons.Filled.Home, contentDescription = null) },
+                )
+                NavigationBarItem(
+                    selected = false,
+                    onClick = onOpenAssistant,
+                    label = { Text("Ask") },
+                    icon = { Icon(Icons.Outlined.QuestionAnswer, contentDescription = null) },
                 )
                 NavigationBarItem(
                     selected = false,
@@ -143,6 +152,12 @@ fun HomeScreen(
                     }
                 }
                 Spacer(Modifier.height(16.dp))
+                NsOutlinedButton(
+                    text = "Ask NutriScan about food or medicine",
+                    onClick = onOpenAssistant,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(8.dp))
                 NsOutlinedButton(
                     text = "Fake product alerts",
                     onClick = onOpenAlerts,

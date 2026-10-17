@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- NutriScan logo badge. Source of truth: branding/logo.svg (same geometry, flat colours). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+
+    <!-- badge -->
+    <path
+        android:fillColor="#0F4029"
+        android:strokeColor="#E2B54A"
+        android:strokeWidth="24"
+        android:pathData="M138,26 H374 A112,112 0 0 1 486,138 V374 A112,112 0 0 1 374,486 H138 A112,112 0 0 1 26,374 V138 A112,112 0 0 1 138,26 Z" />
+
+    <!-- scan brackets -->
+    <path
+        android:strokeColor="#E6BB4D"
+        android:strokeWidth="20"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M118,196 V160 Q118,126 152,126 H192" />
+    <path
+        android:strokeColor="#E6BB4D"
+        android:strokeWidth="20"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M320,126 H360 Q394,126 394,160 V196" />
+    <path
+        android:strokeColor="#E6BB4D"
+        android:strokeWidth="20"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M118,316 V352 Q118,386 152,386 H192" />
+
+    <!-- QR finder squares -->
+    <path
+        android:strokeColor="#F6F6EF"
+        android:strokeWidth="19"
+        android:strokeLineJoin="round"
+        android:pathData="M152,160 H228 V236 H152 Z" />
+    <path
+        android:strokeColor="#F6F6EF"
+        android:strokeWidth="19"
+        android:strokeLineJoin="round"
+        android:pathData="M152,272 H228 V348 H152 Z" />
+
+    <!-- QR dots -->
+    <path android:fillColor="#F6F6EF" android:pathData="M262,160 H292 V190 H262 Z" />
+    <path android:fillColor="#F6F6EF" android:pathData="M322,152 H356 V186 H322 Z" />
+    <path android:fillColor="#F6F6EF" android:pathData="M296,206 H326 V236 H296 Z" />
+    <path android:fillColor="#F6F6EF" android:pathData="M336,238 H374 V258 H336 Z" />
+    <path android:fillColor="#F6F6EF" android:pathData="M262,262 H286 V286 H262 Z" />
+
+    <!-- leaves -->
+    <path
+        android:fillColor="#7DBA3E"
+        android:pathData="M262,378 C252,342 276,320 314,316 C322,346 306,378 262,378 Z" />
+    <path
+        android:fillColor="#E0B243"
+        android:pathData="M318,410 C316,350 360,304 436,292 C436,360 396,410 318,410 Z" />
+    <path
+        android:strokeColor="#B8872A"
+        android:strokeWidth="7"
+        android:strokeLineCap="round"
+        android:pathData="M330,398 C352,350 384,322 420,304" />
+</vector>

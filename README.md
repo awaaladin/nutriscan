@@ -123,6 +123,39 @@ all use the Gemini API through `apps/integrations/vision_identify.py`:
   answered from the database with no AI call; products researched from photos are
   saved so later scans are instant.
 
+### The assistant ("Ask NutriScan")
+
+A full-page chat (`apps/assistant`, Android `ChatScreen`) specialised in nutrition,
+medicines and spotting counterfeit products, personal to the user:
+
+- **Personal:** answers use the user's profile, optional health notes (allergies,
+  conditions, medicines) and recent scans with their *current* verdicts, plus any
+  products from our own database the message mentions (by barcode, NAFDAC number or
+  name). Our data comes first; the AI is told our scores and authenticity tiers are
+  the source of truth.
+- **Photos:** up to 3 per message (food pack, nutrition table, medicine box...). They
+  are read for that one answer and **not stored** (only a count is kept). It never
+  identifies a pill from its looks.
+- **Safety:** no diagnosis or personal doses (it points to a pharmacist), and
+  emergency wording ("overdose", "chest pain"...) gets a fixed "call 112" notice that
+  doesn't depend on the AI being reachable.
+- **Privacy:** chats belong to one account and are not registered in Django admin.
+  Users can delete one chat or all of them.
+- **Learning from it (not a model we train yet):** thumbs up/down on every answer, and
+  an opt-in (off by default, withdrawable) to include a user's chats in a training
+  set. `python manage.py export_training_data --out ./training` writes only consented
+  and rated conversations, anonymised (no ids; emails, phone numbers and long numbers
+  scrubbed) as `good.jsonl` and `review.jsonl`. Review the files before using them:
+  scrubbing is best-effort. Actually fine-tuning a model needs thousands of reviewed
+  examples; this builds that dataset.
+
+### Branding
+
+`branding/logo.svg` is the source of the logo (rebuilt as a vector from the supplied
+mock-up); `branding/png/` and `favicon.ico` are renders of it. The Android app uses
+`res/drawable/ic_logo.xml` (launcher icon, splash, app bar) and the download page
+uses `download/logo.svg`, the favicon set and `og-image.png` for link previews.
+
 ### What's real vs. stubbed
 
 - **Real**: WHO-threshold scoring engine (`apps/scoring/engine.py`), diabetic

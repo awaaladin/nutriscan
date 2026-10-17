@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from django.test import SimpleTestCase, override_settings
 
-from . import product_qa
+from . import gemini_chat
 from .product_qa import ask_about_product
 from .vision_identify import IdentifyError, identify_product_from_images
 
@@ -72,10 +72,10 @@ class ModelFallbackTests(SimpleTestCase):
 @override_settings(GEMINI_CHAT_MODELS=["c1", "c2"])
 class ProductQaTests(SimpleTestCase):
     def setUp(self):
-        product_qa._search_unavailable_until = 0.0
+        gemini_chat._search_unavailable_until = 0.0
 
     def tearDown(self):
-        product_qa._search_unavailable_until = 0.0
+        gemini_chat._search_unavailable_until = 0.0
 
     def _answer(self, text="Because of the sugar."):
         return {

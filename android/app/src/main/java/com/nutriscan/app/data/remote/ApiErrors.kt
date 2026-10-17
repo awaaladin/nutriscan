@@ -23,6 +23,8 @@ data class ServerError(
     val detail: String? = null,
     val reason: String? = null,
     val retake: Boolean = false,
+    // A fixed safety message (e.g. call 112) the server attaches even when the AI is down.
+    val notice: String? = null,
 )
 
 fun parseServerError(response: Response<*>): ServerError? = try {

@@ -4,6 +4,16 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>NutriScan — Download</title>
+<link rel="icon" type="image/svg+xml" href="./logo.svg" />
+<link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png" />
+<link rel="icon" href="./favicon.ico" sizes="48x48" />
+<link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+<meta name="theme-color" content="#0b2e22" />
+<meta property="og:title" content="NutriScan - Scan. Know. Choose Better." />
+<meta property="og:description" content="Scan any packaged food or medicine: health score, diabetic risk and a counterfeit check. Nigeria-first." />
+<meta property="og:image" content="https://nutriscan-download.vercel.app/og-image.png" />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary_large_image" />
 <style>
   :root {
     --emerald-900: #0b2e22;
@@ -45,7 +55,9 @@
     justify-content: center;
     font-size: 32px;
   }
-  h1 { font-size: 24px; margin: 0 0 8px; }
+  .logo { display: block; margin: 0 auto 16px; border-radius: 24px; box-shadow: 0 8px 28px rgba(0,0,0,0.35); }
+  h1 { font-size: 30px; margin: 0 0 8px; font-weight: 800; letter-spacing: -0.5px; }
+  h1 .scan { color: #8cc63f; }
   p.sub { color: rgba(247,246,242,0.75); margin: 0 0 28px; line-height: 1.5; }
   .download-btn {
     display: inline-block;
@@ -79,9 +91,9 @@
 </head>
 <body>
   <div class="card">
-    <div class="badge">🥗</div>
-    <h1>NutriScan</h1>
-    <p class="sub">Scan any packaged food's barcode for an instant WHO-based health score and diabetic risk read.</p>
+    <img class="logo" src="./logo.svg" alt="NutriScan logo" width="104" height="104" />
+    <h1>Nutri<span class="scan">Scan</span></h1>
+    <p class="sub">Scan any packaged food or medicine for an instant health score, diabetic risk read and counterfeit check.<br /><strong style="color:#e6bb4d">Scan · Know · Choose Better</strong></p>
     <a class="download-btn" href="./nutriscan.apk" download>Download for Android</a>
     <div class="meta">v0.2.0 · Beta build · Android 8.0+</div>
     <div class="steps">

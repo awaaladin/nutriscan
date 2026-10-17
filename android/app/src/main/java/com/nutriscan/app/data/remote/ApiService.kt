@@ -3,6 +3,11 @@ package com.nutriscan.app.data.remote
 import com.nutriscan.app.data.model.AlertItem
 import com.nutriscan.app.data.model.AskRequest
 import com.nutriscan.app.data.model.AskResponse
+import com.nutriscan.app.data.model.AssistantSettings
+import com.nutriscan.app.data.model.ChatReply
+import com.nutriscan.app.data.model.ChatThreadDetail
+import com.nutriscan.app.data.model.ChatThreadSummary
+import com.nutriscan.app.data.model.FeedbackRequest
 import com.nutriscan.app.data.model.DisputeRequest
 import com.nutriscan.app.data.model.HistoryItem
 import com.nutriscan.app.data.model.LoginRequest
@@ -24,6 +29,7 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Multipart
 import retrofit2.http.PATCH
@@ -83,6 +89,37 @@ interface ApiService {
         @PartMap fields: Map<String, @JvmSuppressWildcards RequestBody>,
         @Part images: List<MultipartBody.Part>,
     ): Response<ScanResponse>
+
+    @Multipart
+    @POST("api/assistant/chat/")
+    suspend fun assistantChat(
+        @Part("message") message: RequestBody,
+        // Null starts a new conversation.
+        @Part("thread_id") threadId: RequestBody?,
+        // Up to 3 photos (food pack, nutrition table, medicine box...); sent for this answer only.
+        @Part images: List<MultipartBody.Part>,
+    ): Response<ChatReply>
+
+    @GET("api/assistant/threads/")
+    suspend fun assistantThreads(): Response<List<ChatThreadSummary>>
+
+    @GET("api/assistant/threads/{id}/")
+    suspend fun assistantThread(@Path("id") id: Int): Response<ChatThreadDetail>
+
+    @DELETE("api/assistant/threads/{id}/")
+    suspend fun deleteAssistantThread(@Path("id") id: Int): Response<Unit>
+
+    @DELETE("api/assistant/threads/")
+    suspend fun deleteAllAssistantThreads(): Response<Unit>
+
+    @POST("api/assistant/messages/{id}/feedback/")
+    suspend fun assistantFeedback(@Path("id") id: Int, @Body body: FeedbackRequest): Response<Unit>
+
+    @GET("api/assistant/settings/")
+    suspend fun assistantSettings(): Response<AssistantSettings>
+
+    @PATCH("api/assistant/settings/")
+    suspend fun updateAssistantSettings(@Body body: AssistantSettings): Response<AssistantSettings>
 
     @POST("api/products/{barcode}/ask/")
     suspend fun askAboutProduct(@Path("barcode") barcode: String, @Body request: AskRequest): Response<AskResponse>

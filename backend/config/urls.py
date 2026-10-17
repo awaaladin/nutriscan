@@ -5,6 +5,13 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from django.conf import settings
 from django.conf.urls.static import static
 
+from apps.assistant.views import (
+    AssistantSettingsView,
+    ChatView,
+    FeedbackView,
+    ThreadDetailView,
+    ThreadListView,
+)
 from apps.community.views import AlertsView, ProductDisputeView, ProductReportsView, ReportFlagView
 from apps.products.complete_view import CompleteProductView
 from apps.products.identify_view import IdentifyProductView
@@ -33,6 +40,11 @@ urlpatterns = [
     path("api/products/<str:barcode>/ask/", ProductAskView.as_view(), name="product-ask"),
     path("api/products/<str:barcode>/dispute/", ProductDisputeView.as_view(), name="product-dispute"),
     path("api/alerts/", AlertsView.as_view(), name="alerts"),
+    path("api/assistant/chat/", ChatView.as_view(), name="assistant-chat"),
+    path("api/assistant/threads/", ThreadListView.as_view(), name="assistant-threads"),
+    path("api/assistant/threads/<int:thread_id>/", ThreadDetailView.as_view(), name="assistant-thread"),
+    path("api/assistant/messages/<int:message_id>/feedback/", FeedbackView.as_view(), name="assistant-feedback"),
+    path("api/assistant/settings/", AssistantSettingsView.as_view(), name="assistant-settings"),
     path("api/reports/<int:report_id>/flag/", ReportFlagView.as_view(), name="report-flag"),
     path("api/analyze/", AnalyzeView.as_view(), name="analyze"),
     path("api/history/", HistoryListView.as_view(), name="history"),

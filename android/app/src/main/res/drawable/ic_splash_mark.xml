@@ -1,15 +1,9 @@
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="120dp"
-    android:height="120dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    <path
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="4"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:pathData="M54,14 L84,26 V52 C84,74 71,90 54,96 C37,90 24,74 24,52 V26 Z" />
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M39,54 L49,64 L71,40 L75,44 L49,72 L35,58 Z" />
-</vector>
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Splash-screen icon: the logo badge, centred. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:drawable="@drawable/ic_logo"
+        android:width="132dp"
+        android:height="132dp"
+        android:gravity="center" />
+</layer-list>

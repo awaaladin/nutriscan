@@ -37,6 +37,8 @@ import com.nutriscan.app.ui.ScanUiState
 import com.nutriscan.app.ui.screens.AchievementsScreen
 import com.nutriscan.app.ui.screens.AlertsScreen
 import com.nutriscan.app.ui.screens.AskScreen
+import com.nutriscan.app.ui.screens.ChatScreen
+import com.nutriscan.app.ui.screens.ChatThreadsScreen
 import com.nutriscan.app.ui.screens.DisputeScreen
 import com.nutriscan.app.ui.screens.AnalyzingScreen
 import com.nutriscan.app.ui.screens.HealthAnalysisScreen
@@ -168,6 +170,7 @@ fun NutriScanApp() {
                     onOpenInsights = { navController.navigate(Destination.Insights.route) },
                     onOpenAchievements = { navController.navigate(Destination.Achievements.route) },
                     onOpenAlerts = { navController.navigate(Destination.Alerts.route) },
+                    onOpenAssistant = { navController.navigate(Destination.Chat.build()) },
                 )
             }
             animatedComposable(Destination.Scanner.route) {
@@ -292,6 +295,28 @@ fun NutriScanApp() {
                     onBack = { navController.popBackStack() },
                     onAddReport = { navController.navigate(Destination.SubmitReport.build(barcode)) },
                     onDispute = { navController.navigate(Destination.Dispute.build(barcode)) },
+                )
+            }
+            animatedComposable(Destination.Chat.route) { backStackEntry ->
+                val threadId = backStackEntry.arguments?.getString("threadId")?.toIntOrNull()
+                ChatScreen(
+                    repository = repository,
+                    preferences = preferences,
+                    threadId = threadId,
+                    onBack = { navController.popBackStack() },
+                    onOpenThreads = { navController.navigate(Destination.ChatThreads.route) },
+                )
+            }
+            animatedComposable(Destination.ChatThreads.route) {
+                ChatThreadsScreen(
+                    repository = repository,
+                    onBack = { navController.popBackStack() },
+                    onOpen = { threadId ->
+                        // Replace the current chat with the chosen one instead of stacking chats.
+                        navController.navigate(Destination.Chat.build(threadId)) {
+                            popUpTo(Destination.Home.route)
+                        }
+                    },
                 )
             }
             animatedComposable(Destination.Ask.route) { backStackEntry ->

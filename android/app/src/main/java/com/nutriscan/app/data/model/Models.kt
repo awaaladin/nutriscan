@@ -188,3 +188,38 @@ data class AskResponse(
     val sources: List<AskSource> = emptyList(),
     val web_research: Boolean = false,
 )
+
+// ---- Assistant chat -----------------------------------------------------------------------
+
+/** One message of a saved conversation. Photos a user attached are not stored server-side,
+ * only [image_count]. [feedback] is 1 (helpful), -1 (not helpful) or null. */
+data class ChatMessageDto(
+    val id: Int,
+    val role: String,
+    val text: String,
+    val image_count: Int = 0,
+    val web_research: Boolean = false,
+    val sources: List<AskSource> = emptyList(),
+    val feedback: Int? = null,
+    val created_at: String = "",
+)
+
+/** [notice] is a fixed safety message (e.g. "call 112") sent when the question sounds like an emergency. */
+data class ChatReply(
+    val thread_id: Int,
+    val title: String,
+    val message: ChatMessageDto,
+    val notice: String? = null,
+)
+
+data class ChatThreadSummary(val id: Int, val title: String, val updated_at: String = "")
+
+data class ChatThreadDetail(val id: Int, val title: String, val messages: List<ChatMessageDto>)
+
+/** What the assistant knows about the user, and whether their (anonymised) chats may help train NutriScan. */
+data class AssistantSettings(
+    val health_notes: String = "",
+    val allow_training_use: Boolean = false,
+)
+
+data class FeedbackRequest(val value: Int, val note: String = "")

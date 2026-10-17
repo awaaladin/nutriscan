@@ -17,6 +17,7 @@ class AppPreferencesManager(private val context: Context) {
         val DARK_MODE_ENABLED = booleanPreferencesKey("dark_mode_enabled")
         val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
         val AUTO_READ_ALOUD = booleanPreferencesKey("auto_read_aloud")
+        val ASSISTANT_INTRO_SEEN = booleanPreferencesKey("assistant_intro_seen")
     }
 
     /** null = follow system theme. */
@@ -35,6 +36,15 @@ class AppPreferencesManager(private val context: Context) {
 
     suspend fun setAutoReadAloud(enabled: Boolean) {
         context.appPrefsDataStore.edit { prefs -> prefs[Keys.AUTO_READ_ALOUD] = enabled }
+    }
+
+    /** Whether the one-time assistant privacy/consent introduction has been shown. */
+    val assistantIntroSeen: Flow<Boolean> = context.appPrefsDataStore.data.map { prefs ->
+        prefs[Keys.ASSISTANT_INTRO_SEEN] ?: false
+    }
+
+    suspend fun setAssistantIntroSeen() {
+        context.appPrefsDataStore.edit { prefs -> prefs[Keys.ASSISTANT_INTRO_SEEN] = true }
     }
 
     suspend fun setDarkModeOverride(enabled: Boolean?) {

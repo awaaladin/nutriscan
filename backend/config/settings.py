@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "apps.scans",
     "apps.subscriptions",
     "apps.community",
+    "apps.assistant",
 ]
 
 MIDDLEWARE = [
@@ -126,7 +127,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 REST_FRAMEWORK = {
     # Each "ask about this product" question costs an AI call.
-    "DEFAULT_THROTTLE_RATES": {"ask": "40/hour"},
+    "DEFAULT_THROTTLE_RATES": {"ask": "40/hour", "chat": "60/hour"},
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),

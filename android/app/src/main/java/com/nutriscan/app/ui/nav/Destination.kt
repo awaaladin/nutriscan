@@ -44,6 +44,13 @@ sealed class Destination(val route: String) {
         fun build(barcode: String) = "nutrition/$barcode"
     }
 
+    /** The general assistant chat. "new" starts a fresh conversation, a number reopens one. */
+    data object Chat : Destination("chat/{threadId}") {
+        fun build(threadId: Int? = null) = "chat/${threadId ?: "new"}"
+    }
+
+    data object ChatThreads : Destination("chats")
+
     data object Ask : Destination("ask/{barcode}") {
         fun build(barcode: String) = "ask/$barcode"
     }

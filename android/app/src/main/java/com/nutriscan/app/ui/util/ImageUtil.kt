@@ -53,3 +53,28 @@ fun downscaleForUpload(source: File, maxEdge: Int = 1280, quality: Int = 80): Fi
     source.delete()
     return output
 }
+
+/**
+ * Copies a photo the user picked from the gallery (a content:// URI) into the cache and
+ * shrinks it for upload, with the same EXIF rotation fix as camera photos.
+ * Returns null if the file can't be read as an image.
+ */
+fun importForUpload(context: android.content.Context, uri: android.net.Uri): File? {
+    val copy = File(context.cacheDir, "pick_${System.nanoTime()}.jpg")
+    return try {
+        context.contentResolver.openInputStream(uri)?.use { input ->
+            copy.outputStream().use { input.copyTo(it) }
+        } ?: return null
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(copy.absolutePath, bounds)
+        if (bounds.outWidth <= 0) {
+            copy.delete()
+            null
+        } else {
+            downscaleForUpload(copy)
+        }
+    } catch (_: Exception) {
+        copy.delete()
+        null
+    }
+}

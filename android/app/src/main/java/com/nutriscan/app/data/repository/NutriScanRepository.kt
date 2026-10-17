@@ -7,6 +7,11 @@ import com.nutriscan.app.data.model.AlertItem
 import com.nutriscan.app.data.model.AskRequest
 import com.nutriscan.app.data.model.AskResponse
 import com.nutriscan.app.data.model.AskTurn
+import com.nutriscan.app.data.model.AssistantSettings
+import com.nutriscan.app.data.model.ChatReply
+import com.nutriscan.app.data.model.ChatThreadDetail
+import com.nutriscan.app.data.model.ChatThreadSummary
+import com.nutriscan.app.data.model.FeedbackRequest
 import com.nutriscan.app.data.model.DisputeRequest
 import com.nutriscan.app.data.model.HistoryItem
 import com.nutriscan.app.data.model.LoginRequest
@@ -35,6 +40,10 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import java.io.IOException
 import java.net.SocketTimeoutException
+
+/** A failed assistant request. [notice] is the server's fixed safety message for
+ * emergency-sounding questions; it must be shown even though the AI could not answer. */
+class ChatException(message: String, val notice: String?) : Exception(message)
 
 sealed class ScanOutcome {
     data class Success(val result: ScanResponse) : ScanOutcome()
@@ -263,6 +272,65 @@ class NutriScanRepository(
         Result.failure(IllegalStateException("The assistant is taking too long to answer. Please try again."))
     } catch (e: IOException) {
         Result.failure(IllegalStateException("No connection: check your internet and try again."))
+    }
+
+    /** One turn of the assistant conversation. Failures are [ChatException]s carrying the
+     * server's reason and, for emergency-sounding questions, the safety notice. */
+    suspend fun chat(threadId: Int?, message: String, photos: List<File>): Result<ChatReply> = try {
+        fun text(value: String) = value.toRequestBody("text/plain".toMediaType())
+        val parts = photos.map {
+            MultipartBody.Part.createFormData("images", it.name, it.asRequestBody("image/jpeg".toMediaType()))
+        }
+        val response = api.assistantChat(text(message), threadId?.let { text(it.toString()) }, parts)
+        if (response.isSuccessful) {
+            Result.success(requireNotNull(response.body()))
+        } else {
+            val error = parseServerError(response) // read once: the body can't be re-read
+            Result.failure(ChatException(describeFailure(response.code(), error), error?.notice))
+        }
+    } catch (e: SocketTimeoutException) {
+        Result.failure(ChatException("The assistant is taking too long to answer. Please try again.", null))
+    } catch (e: IOException) {
+        Result.failure(ChatException("No connection: check your internet and try again.", null))
+    }
+
+    suspend fun chatThreads(): Result<List<ChatThreadSummary>> = runCatching {
+        val response = api.assistantThreads()
+        if (!response.isSuccessful) error(describeFailure(response))
+        requireNotNull(response.body())
+    }
+
+    suspend fun chatThread(id: Int): Result<ChatThreadDetail> = runCatching {
+        val response = api.assistantThread(id)
+        if (!response.isSuccessful) error(describeFailure(response))
+        requireNotNull(response.body())
+    }
+
+    suspend fun deleteChatThread(id: Int): Result<Unit> = runCatching {
+        val response = api.deleteAssistantThread(id)
+        if (!response.isSuccessful) error(describeFailure(response))
+    }
+
+    suspend fun deleteAllChats(): Result<Unit> = runCatching {
+        val response = api.deleteAllAssistantThreads()
+        if (!response.isSuccessful) error(describeFailure(response))
+    }
+
+    suspend fun rateAnswer(messageId: Int, value: Int, note: String = ""): Result<Unit> = runCatching {
+        val response = api.assistantFeedback(messageId, FeedbackRequest(value, note))
+        if (!response.isSuccessful) error(describeFailure(response))
+    }
+
+    suspend fun assistantSettings(): Result<AssistantSettings> = runCatching {
+        val response = api.assistantSettings()
+        if (!response.isSuccessful) error(describeFailure(response))
+        requireNotNull(response.body())
+    }
+
+    suspend fun saveAssistantSettings(settings: AssistantSettings): Result<AssistantSettings> = runCatching {
+        val response = api.updateAssistantSettings(settings)
+        if (!response.isSuccessful) error(describeFailure(response))
+        requireNotNull(response.body())
     }
 
     suspend fun alerts(): Result<List<AlertItem>> = runCatching {
