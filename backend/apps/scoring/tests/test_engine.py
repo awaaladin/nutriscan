@@ -79,6 +79,38 @@ class ComputeHealthScoreTests(unittest.TestCase):
         self.assertTrue(sugar_leads_ingredients("Wheat flour (wheat, sugar), water, salt"))
         self.assertFalse(sugar_leads_ingredients("Water, salt, oil, yeast, flour (wheat, sugar)"))
 
+    def test_one_high_flag_caps_the_product_at_moderate(self):
+        # the real gum: 72.1 g sugar, no fat, almost no sodium. Used to score 7/10 "Good".
+        result = compute_health_score(NutritionFacts(sugar_g=72.1, saturated_fat_g=0.0, sodium_mg=9.0))
+        self.assertEqual(result.label, HealthLabel.MODERATE)
+        self.assertEqual(result.score, 6)  # the number agrees with the label
+        self.assertIn("high_sugar", result.flags)
+
+    def test_each_nutrient_can_trigger_the_cap_on_its_own(self):
+        high_fat = compute_health_score(NutritionFacts(sugar_g=1, saturated_fat_g=9, sodium_mg=10))
+        high_sodium = compute_health_score(NutritionFacts(sugar_g=1, saturated_fat_g=0.2, sodium_mg=900))
+        for result in (high_fat, high_sodium):
+            self.assertEqual(result.label, HealthLabel.MODERATE)
+            self.assertEqual(result.score, 6)
+
+    def test_amber_flags_alone_do_not_trigger_the_cap(self):
+        # moderate (not high) sugar, fat and sodium are -1 each: 7/10, still Good
+        result = compute_health_score(NutritionFacts(sugar_g=7, saturated_fat_g=2, sodium_mg=200))
+        self.assertEqual((result.label, result.score), (HealthLabel.GOOD, 7))
+
+    def test_the_cap_never_raises_a_score(self):
+        two_high = compute_health_score(NutritionFacts(sugar_g=30, saturated_fat_g=8, sodium_mg=10))
+        self.assertEqual((two_high.label, two_high.score), (HealthLabel.MODERATE, 4))
+        three_high = compute_health_score(NutritionFacts(sugar_g=30, saturated_fat_g=8, sodium_mg=900))
+        self.assertEqual((three_high.label, three_high.score), (HealthLabel.AVOID, 1))
+
+    def test_a_high_flag_with_other_data_missing_is_moderate_not_incomplete(self):
+        # the known red flag is enough to say so; the unknowns could only make it worse
+        result = compute_health_score(NutritionFacts(sugar_g=72.1))
+        self.assertEqual(result.label, HealthLabel.MODERATE)
+        self.assertTrue(result.insufficient_data)
+        self.assertEqual(result.missing, ["saturated_fat", "sodium"])
+
     def test_score_never_drops_below_one(self):
         nutrition = NutritionFacts(sugar_g=100, saturated_fat_g=100, sodium_mg=5000)
         result = compute_health_score(nutrition)

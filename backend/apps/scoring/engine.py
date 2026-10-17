@@ -47,6 +47,9 @@ SUGAR_MODERATE_G, SUGAR_HIGH_G = 5.0, 10.0
 SATURATED_FAT_MODERATE_G, SATURATED_FAT_HIGH_G = 1.5, 5.0
 SODIUM_MODERATE_MG, SODIUM_HIGH_MG = 120.0, 400.0
 
+# Highest score a product with any "high" nutrient can have (the top of Moderate).
+HIGH_FLAG_SCORE_CAP = 6
+
 DIABETIC_SUGAR_AVOID_G = 22.5
 DIABETIC_SUGAR_MODERATE_G = 10.0
 
@@ -152,6 +155,14 @@ def compute_health_score(nutrition: NutritionFacts, ingredients_text: str = "") 
     penalty += sodium_penalty
 
     score = max(1, min(10, 10 - penalty))
+
+    # A "high" tier on any single nutrient (WHO red: sugar, saturated fat or sodium) must
+    # not be averaged away by clean values elsewhere. Without this, a product that is
+    # 72% sugar but low in fat and salt scored 7/10 -- "Good". One high flag caps the
+    # product at Moderate, and the number is capped at 6 so score and label agree.
+    if "high" in (sugar_tier, fat_tier, sodium_tier):
+        score = min(score, HIGH_FLAG_SCORE_CAP)
+
     if score >= 7:
         label = HealthLabel.GOOD
     elif score >= 4:
