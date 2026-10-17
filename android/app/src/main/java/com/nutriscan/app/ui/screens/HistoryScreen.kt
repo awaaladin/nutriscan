@@ -3,6 +3,7 @@ package com.nutriscan.app.ui.screens
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -37,11 +38,12 @@ import com.nutriscan.app.data.repository.NutriScanRepository
 import com.nutriscan.app.ui.components.HealthLabelChip
 import com.nutriscan.app.ui.components.NsOutlinedButton
 import com.nutriscan.app.ui.components.NsScreenScaffold
+import com.nutriscan.app.ui.components.tierColor
 
 private enum class HistoryFilter { ALL, GOOD, MODERATE, AVOID }
 
 @Composable
-fun HistoryScreen(repository: NutriScanRepository, onBack: () -> Unit) {
+fun HistoryScreen(repository: NutriScanRepository, onBack: () -> Unit, onOpenScan: (HistoryItem) -> Unit) {
     var items by remember { mutableStateOf<List<HistoryItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -113,8 +115,26 @@ fun HistoryScreen(repository: NutriScanRepository, onBack: () -> Unit) {
                 else -> LazyColumn {
                     items(filtered) { item ->
                         ListItem(
+                            modifier = Modifier.clickable { onOpenScan(item) },
+                            overlineContent = { Text(item.scanned_at.take(10), style = MaterialTheme.typography.labelSmall) },
                             headlineContent = { Text(item.product.name) },
-                            supportingContent = { HealthLabelChip(item.label) },
+                            supportingContent = {
+                                Column {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        HealthLabelChip(item.label)
+                                        item.product.integrity?.let {
+                                            Text(
+                                                "  ·  ${it.headline}",
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = tierColor(it.tier),
+                                            )
+                                        }
+                                    }
+                                    item.product.brand?.takeIf { b -> b.isNotBlank() }?.let { b ->
+                                        Text(b, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
+                            },
                             trailingContent = { Text("${item.score}/10", style = MaterialTheme.typography.titleMedium) },
                         )
                         HorizontalDivider()

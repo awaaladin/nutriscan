@@ -36,6 +36,7 @@ import com.nutriscan.app.ui.MainViewModel
 import com.nutriscan.app.ui.ScanUiState
 import com.nutriscan.app.ui.screens.AchievementsScreen
 import com.nutriscan.app.ui.screens.AlertsScreen
+import com.nutriscan.app.ui.screens.AskScreen
 import com.nutriscan.app.ui.screens.DisputeScreen
 import com.nutriscan.app.ui.screens.AnalyzingScreen
 import com.nutriscan.app.ui.screens.HealthAnalysisScreen
@@ -220,7 +221,10 @@ fun NutriScanApp() {
             animatedComposable(Destination.ProductDetail.route) {
                 ProductDetailScreen(
                     viewModel = mainViewModel,
-                    onBack = { navController.popBackStack(Destination.Home.route, inclusive = false) },
+                    repository = repository,
+                    preferences = preferences,
+                    onBack = { navController.popBackStack() },
+                    onAsk = { barcode -> navController.navigate(Destination.Ask.build(barcode)) },
                     onOpenReports = { barcode -> navController.navigate(Destination.Reports.build(barcode)) },
                     onViewAnalysis = {
                         val currentState = mainViewModel.scanState.value
@@ -254,6 +258,16 @@ fun NutriScanApp() {
                     onDispute = { navController.navigate(Destination.Dispute.build(barcode)) },
                 )
             }
+            animatedComposable(Destination.Ask.route) { backStackEntry ->
+                val barcode = backStackEntry.arguments?.getString("barcode").orEmpty()
+                AskScreen(
+                    viewModel = mainViewModel,
+                    repository = repository,
+                    preferences = preferences,
+                    barcode = barcode,
+                    onBack = { navController.popBackStack() },
+                )
+            }
             animatedComposable(Destination.Alerts.route) {
                 AlertsScreen(
                     repository = repository,
@@ -283,7 +297,14 @@ fun NutriScanApp() {
                 ProInsightsScreen(repository = repository, onBack = { navController.popBackStack() })
             }
             animatedComposable(Destination.History.route) {
-                HistoryScreen(repository = repository, onBack = { navController.popBackStack() })
+                HistoryScreen(
+                    repository = repository,
+                    onBack = { navController.popBackStack() },
+                    onOpenScan = { item ->
+                        mainViewModel.openScan(item)
+                        navController.navigate(Destination.ProductDetail.build(item.product.barcode))
+                    },
+                )
             }
             animatedComposable(Destination.Profile.route) {
                 ProfileScreen(repository = repository, onBack = { navController.popBackStack() })

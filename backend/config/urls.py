@@ -7,6 +7,7 @@ from django.conf.urls.static import static
 
 from apps.community.views import AlertsView, ProductDisputeView, ProductReportsView, ReportFlagView
 from apps.products.identify_view import IdentifyProductView
+from apps.products.qa_view import ProductAskView
 from apps.products.views import (
     AnalyzeView,
     ProductDetailView,
@@ -27,6 +28,7 @@ urlpatterns = [
     path("api/products/identify/", IdentifyProductView.as_view(), name="product-identify"),
     path("api/products/<str:barcode>/", ProductDetailView.as_view(), name="product-detail"),
     path("api/products/<str:barcode>/reports/", ProductReportsView.as_view(), name="product-reports"),
+    path("api/products/<str:barcode>/ask/", ProductAskView.as_view(), name="product-ask"),
     path("api/products/<str:barcode>/dispute/", ProductDisputeView.as_view(), name="product-dispute"),
     path("api/alerts/", AlertsView.as_view(), name="alerts"),
     path("api/reports/<int:report_id>/flag/", ReportFlagView.as_view(), name="report-flag"),

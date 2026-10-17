@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material3.HorizontalDivider
@@ -39,6 +40,7 @@ fun SettingsScreen(
 ) {
     val darkModeOverride by preferences.darkModeOverride.collectAsState(initial = null)
     val notificationsEnabled by preferences.notificationsEnabled.collectAsState(initial = true)
+    val autoReadAloud by preferences.autoReadAloud.collectAsState(initial = false)
     val scope = rememberCoroutineScope()
 
     NsScreenScaffold(title = "Settings", onBack = onBack) { padding ->
@@ -66,6 +68,20 @@ fun SettingsScreen(
                     checked = notificationsEnabled,
                     onCheckedChange = { checked ->
                         scope.launch { preferences.setNotificationsEnabled(checked) }
+                    },
+                )
+            },
+        )
+        HorizontalDivider()
+        ListItem(
+            leadingContent = { Icon(Icons.AutoMirrored.Outlined.VolumeUp, contentDescription = null) },
+            headlineContent = { Text("Read results aloud") },
+            supportingContent = { Text("Speak scan results and answers automatically") },
+            trailingContent = {
+                Switch(
+                    checked = autoReadAloud,
+                    onCheckedChange = { checked ->
+                        scope.launch { preferences.setAutoReadAloud(checked) }
                     },
                 )
             },

@@ -16,6 +16,7 @@ class AppPreferencesManager(private val context: Context) {
         val DARK_MODE_OVERRIDE_SET = booleanPreferencesKey("dark_mode_override_set")
         val DARK_MODE_ENABLED = booleanPreferencesKey("dark_mode_enabled")
         val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
+        val AUTO_READ_ALOUD = booleanPreferencesKey("auto_read_aloud")
     }
 
     /** null = follow system theme. */
@@ -25,6 +26,15 @@ class AppPreferencesManager(private val context: Context) {
 
     val notificationsEnabled: Flow<Boolean> = context.appPrefsDataStore.data.map { prefs ->
         prefs[Keys.NOTIFICATIONS_ENABLED] ?: true
+    }
+
+    /** Speak scan results and assistant answers aloud without tapping the speaker button. */
+    val autoReadAloud: Flow<Boolean> = context.appPrefsDataStore.data.map { prefs ->
+        prefs[Keys.AUTO_READ_ALOUD] ?: false
+    }
+
+    suspend fun setAutoReadAloud(enabled: Boolean) {
+        context.appPrefsDataStore.edit { prefs -> prefs[Keys.AUTO_READ_ALOUD] = enabled }
     }
 
     suspend fun setDarkModeOverride(enabled: Boolean?) {

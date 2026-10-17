@@ -4,6 +4,9 @@ import com.nutriscan.app.data.local.CachedScanDao
 import com.nutriscan.app.data.local.CachedScanEntity
 import com.nutriscan.app.data.local.SessionManager
 import com.nutriscan.app.data.model.AlertItem
+import com.nutriscan.app.data.model.AskRequest
+import com.nutriscan.app.data.model.AskResponse
+import com.nutriscan.app.data.model.AskTurn
 import com.nutriscan.app.data.model.DisputeRequest
 import com.nutriscan.app.data.model.HistoryItem
 import com.nutriscan.app.data.model.LoginRequest
@@ -172,6 +175,68 @@ class NutriScanRepository(
         )
     } catch (e: IOException) {
         ScanOutcome.Error("No connection: the photos couldn't be sent. Check your internet and try again.")
+    }
+
+    suspend fun reports(barcode: String): Result<ReportsResponse> = runCatching {
+        val response = api.getReports(barcode)
+        if (!response.isSuccessful) error(friendlyErrorMessage(response.code()))
+        requireNotNull(response.body())
+    }
+
+    suspend fun submitReport(
+        barcode: String,
+        verdict: String,
+        comment: String,
+        whereBought: String,
+        batchNumber: String,
+        nafdacNumber: String,
+        photos: List<File>,
+    ): Result<SubmitReportResponse> = runCatching {
+        fun text(value: String) = value.toRequestBody("text/plain".toMediaType())
+        val photoParts = photos.map {
+            MultipartBody.Part.createFormData("photos", it.name, it.asRequestBody("image/jpeg".toMediaType()))
+        }
+        val response = api.submitReport(
+            barcode, text(verdict), text(comment), text(whereBought), text(batchNumber), text(nafdacNumber), photoParts,
+        )
+        if (!response.isSuccessful) {
+            val message = if (response.code() == 400) "Couldn't post that report -- check the NAFDAC number format (e.g. A4-1234) and your photos (max 4, under 5MB each)." else friendlyErrorMessage(response.code())
+            error(message)
+        }
+        requireNotNull(response.body())
+    }
+
+    /** Asks the server about a product we hold. The answer is grounded in our own
+     * data (score, ingredients, NAFDAC and authenticity status, community reports,
+     * the user's health goals) and says whether live web research was used. */
+    suspend fun ask(barcode: String, question: String, history: List<AskTurn>): Result<AskResponse> = try {
+        val response = api.askAboutProduct(barcode, AskRequest(question, history))
+        if (response.isSuccessful) {
+            Result.success(requireNotNull(response.body()))
+        } else {
+            Result.failure(IllegalStateException(describeFailure(response)))
+        }
+    } catch (e: SocketTimeoutException) {
+        Result.failure(IllegalStateException("The assistant is taking too long to answer. Please try again."))
+    } catch (e: IOException) {
+        Result.failure(IllegalStateException("No connection: check your internet and try again."))
+    }
+
+    suspend fun alerts(): Result<List<AlertItem>> = runCatching {
+        val response = api.getAlerts()
+        if (!response.isSuccessful) error(friendlyErrorMessage(response.code()))
+        requireNotNull(response.body())
+    }
+
+    suspend fun submitDispute(barcode: String, request: DisputeRequest): Result<Unit> = runCatching {
+        val response = api.submitDispute(barcode, request)
+        if (!response.isSuccessful) error(friendlyErrorMessage(response.code()))
+    }
+
+    suspend fun flagReport(reportId: Int, reason: String = ""): Result<Unit> = runCatching {
+        val response = api.flagReport(reportId, mapOf("reason" to reason))
+        if (response.code() == 400) error("You can't flag your own report.")
+        if (!response.isSuccessful) error(friendlyErrorMessage(response.code()))
     }
 
     fun observeCachedScans(): Flow<List<CachedScanEntity>> = cachedScanDao.observeAll()

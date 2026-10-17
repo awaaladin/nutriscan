@@ -96,7 +96,6 @@ def identify_product_from_images(images: List[Tuple[bytes, str]]) -> dict:
             "You can still add the product by hand.",
         )
 
-    model = getattr(settings, "GEMINI_VISION_MODEL", DEFAULT_MODEL)
     parts = [{"text": PROMPT}] + [
         {"inline_data": {"mime_type": mime, "data": base64.b64encode(data).decode("ascii")}}
         for data, mime in images
@@ -106,7 +105,7 @@ def identify_product_from_images(images: List[Tuple[bytes, str]]) -> dict:
         "contents": [{"parts": parts}],
         "generationConfig": {"responseMimeType": "application/json", "responseSchema": RESPONSE_SCHEMA},
     }
-    response = _post_with_retries(API_URL.format(model=model), api_key, payload)
+    response = post_with_model_fallback(api_key, payload)
     if response.status_code != 200:
         raise _http_error(response)
 
@@ -134,40 +133,116 @@ def identify_product_from_images(images: List[Tuple[bytes, str]]) -> dict:
 RETRYABLE_STATUSES = {429, 500, 502, 503, 504}
 MAX_ATTEMPTS = 3
 
+# The free tier meters requests per model per day, so these are tried in order:
+# when one model's daily allowance is spent (429) or it has been retired (404),
+# the next still has its own. Override with GEMINI_MODELS / GEMINI_CHAT_MODELS.
+#
+# Reading a label needs accuracy, so photo research starts with the strongest
+# model. Chat (questions, one-sentence explanations) needs speed and volume, so
+# it starts with the lite models (~2s vs ~8s).
+DEFAULT_MODELS = [
+    DEFAULT_MODEL,
+    "gemini-3.7-flash",
+    "gemini-3.5-flash",
+    "gemini-flash-lite-latest",
+    "gemini-3.1-flash-lite",
+    "gemini-3-flash-preview",
+]
+DEFAULT_CHAT_MODELS = [
+    "gemini-flash-lite-latest",
+    "gemini-3.1-flash-lite",
+    "gemini-3-flash-preview",
+    "gemini-3.7-flash",
+    DEFAULT_MODEL,
+]
 
-def _post_with_retries(url: str, api_key: str, payload: dict):
+
+def configured_models(kind: str = "vision") -> List[str]:
+    if kind == "chat":
+        return list(getattr(settings, "GEMINI_CHAT_MODELS", None) or DEFAULT_CHAT_MODELS)
+    return list(getattr(settings, "GEMINI_MODELS", None) or DEFAULT_MODELS)
+
+
+def is_daily_quota(response) -> bool:
+    """True when a 429 means today's allowance is spent (retrying can't help),
+    as opposed to a per-minute burst limit that clears in seconds."""
+    try:
+        details = response.json().get("error", {}).get("details", [])
+    except (ValueError, AttributeError):
+        return False
+    return any("PerDay" in violation.get("quotaId", "") for d in details for violation in d.get("violations", []))
+
+
+def _post_with_retries(url: str, api_key: str, payload: dict, timeout: int = 30, max_attempts: int = MAX_ATTEMPTS):
     """Google's API briefly returns 429/5xx (overloaded, rate-limited) or drops
     a connection even when nothing is wrong with the request. One of those must
     not fail a scan the user spent time photographing, so these are retried with
-    a short backoff; permanent errors (bad key, bad request, retired model)
-    return immediately. Raises IdentifyError if every attempt failed to connect."""
+    a short backoff; permanent errors (bad key, bad request, retired model) and
+    a spent daily quota return immediately. Raises IdentifyError if every attempt
+    failed to connect."""
     last_error = None
-    for attempt in range(1, MAX_ATTEMPTS + 1):
+    for attempt in range(1, max_attempts + 1):
         try:
-            response = requests.post(url, params={"key": api_key}, json=payload, timeout=30)
+            response = requests.post(url, params={"key": api_key}, json=payload, timeout=timeout)
         except requests.Timeout:
-            last_error = IdentifyError("ai_timeout", "The AI took too long to read the photos. Please try again.")
+            last_error = IdentifyError("ai_timeout", "The AI took too long to respond. Please try again.")
         except requests.RequestException:
             last_error = IdentifyError(
                 "ai_unreachable", "The server couldn't reach the AI service. Please try again shortly."
             )
         else:
-            if response.status_code not in RETRYABLE_STATUSES or attempt == MAX_ATTEMPTS:
+            if (
+                response.status_code not in RETRYABLE_STATUSES
+                or attempt == max_attempts
+                or (response.status_code == 429 and is_daily_quota(response))
+            ):
                 return response
             last_error = None
-        if attempt < MAX_ATTEMPTS:
+        if attempt < max_attempts:
             time.sleep(1.5 * attempt)
     raise last_error
+
+
+def post_with_model_fallback(
+    api_key: str,
+    payload: dict,
+    timeout: int = 30,
+    max_attempts: int = MAX_ATTEMPTS,
+    models: List[str] = None,
+    kind: str = "vision",
+):
+    """POST to the first model that will take the request. A model that is out
+    of quota (429) or retired (404) hands over to the next; any other answer,
+    success or a permanent error, is final. If every model refuses, the last
+    refusal is returned so the caller reports the real reason."""
+    response = None
+    for model in models or configured_models(kind):
+        response = _post_with_retries(API_URL.format(model=model), api_key, payload, timeout, max_attempts)
+        if response.status_code not in (404, 429):
+            return response
+    return response
 
 
 def _http_error(response) -> IdentifyError:
     status = response.status_code
     if status == 429:
-        return IdentifyError("ai_quota", "The AI service is busy or over its daily limit. Please try again in a few minutes.")
+        if is_daily_quota(response):
+            return IdentifyError(
+                "ai_quota_daily",
+                "NutriScan's AI has reached its daily limit, so it can't research new products or answer "
+                "questions until it resets (usually within a day). Products already in our database still "
+                "work, and you can add this one by hand.",
+            )
+        return IdentifyError("ai_quota", "The AI service is busy right now. Please try again in a minute.")
     if status in (401, 403):
-        return IdentifyError("ai_auth", "The server's AI key was rejected, so photo recognition is unavailable. This is a server problem, not your photos.")
+        return IdentifyError("ai_auth", "The server's AI key was rejected, so the AI features are unavailable. This is a server problem, not your photos.")
     if status == 404:
-        return IdentifyError("ai_model_gone", "The AI model this app uses is no longer available. This is a server problem, not your photos.")
+        return IdentifyError("ai_model_gone", "The AI models this app uses are no longer available. This is a server problem, not your photos.")
     if status == 400:
-        return IdentifyError("ai_rejected", "The AI rejected these photos (they may be too large or corrupted). Retake them and try again.", retake=True)
+        return IdentifyError(
+            "ai_rejected",
+            "The AI couldn't process this request (it may be too large or malformed). "
+            "If you were sending photos, retake them and try again.",
+            retake=True,
+        )
     return IdentifyError("ai_error", f"The AI service returned an error ({status}). Please try again shortly.")

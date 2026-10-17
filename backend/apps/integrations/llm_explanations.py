@@ -10,7 +10,7 @@ import os
 from abc import ABC, abstractmethod
 from typing import List
 
-import requests
+from .vision_identify import IdentifyError, post_with_model_fallback
 
 
 class LLMExplanationProvider(ABC):
@@ -48,11 +48,6 @@ class GeminiExplanationProvider(LLMExplanationProvider):
     product detail response.
     """
 
-    API_URL = (
-        "https://generativelanguage.googleapis.com/v1beta/models/"
-        "gemini-3.8-flash:generateContent"
-    )
-
     def __init__(self, api_key: str):
         self._api_key = api_key
         self._fallback = TemplateExplanationProvider()
@@ -71,20 +66,14 @@ class GeminiExplanationProvider(LLMExplanationProvider):
             f"Flags: {flag_text}"
         )
         try:
-            response = requests.post(
-                self.API_URL,
-                params={"key": self._api_key},
-                json={"contents": [{"parts": [{"text": prompt}]}]},
-                timeout=10,
+            response = post_with_model_fallback(
+                self._api_key, {"contents": [{"parts": [{"text": prompt}]}]}, timeout=10, max_attempts=1, kind="chat"
             )
-            response.raise_for_status()
-            text = (
-                response.json()["candidates"][0]["content"]["parts"][0]["text"]
-            ).strip()
-            return text or self._fallback.explain(
-                product_name, score, label, diabetic_risk, flags
-            )
-        except (requests.RequestException, KeyError, IndexError, ValueError):
+            if response.status_code != 200:
+                return self._fallback.explain(product_name, score, label, diabetic_risk, flags)
+            text = (response.json()["candidates"][0]["content"]["parts"][0]["text"]).strip()
+            return text or self._fallback.explain(product_name, score, label, diabetic_risk, flags)
+        except (IdentifyError, KeyError, IndexError, ValueError):
             return self._fallback.explain(product_name, score, label, diabetic_risk, flags)
 
 

@@ -10,4 +10,6 @@ class HistoryListView(ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Scan.objects.filter(user=self.request.user).select_related("product")
+        # Newest first (Scan.Meta.ordering), capped so a long history stays quick:
+        # each row carries the full product, including its trust assessment.
+        return Scan.objects.filter(user=self.request.user).select_related("product")[:100]

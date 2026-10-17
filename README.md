@@ -107,6 +107,22 @@ endpoint returns 503 and grants nothing. Set up:
 Renewals are picked up by re-checking with Google once a stored expiry passes;
 there is no Pub/Sub webhook yet.
 
+### AI features and Google AI limits
+
+Photo research, "ask about this product" and the one-sentence health explanations
+all use the Gemini API through `apps/integrations/vision_identify.py`:
+
+- Models are tried in order (`GEMINI_MODELS` for photos, `GEMINI_CHAT_MODELS` for
+  chat/explanations): a model that is out of daily quota (429) or retired (404)
+  hands over to the next, transient 429/5xx errors are retried, and every failure
+  surfaces as a specific reason to the app instead of a generic error.
+- The free tier meters requests per model per day and does not allow web search
+  ("grounding"), so questions are then answered from NutriScan's own data and
+  say so. Enabling billing on the Google AI Studio project removes both limits.
+- Data first: a barcode (any zero-padded form) or NAFDAC number already on file is
+  answered from the database with no AI call; products researched from photos are
+  saved so later scans are instant.
+
 ### What's real vs. stubbed
 
 - **Real**: WHO-threshold scoring engine (`apps/scoring/engine.py`), diabetic

@@ -1,3 +1,4 @@
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -9,6 +10,7 @@ from apps.integrations.open_food_facts import OpenFoodFactsClient
 from apps.scans.models import Scan
 from apps.scoring.engine import HealthScoreResult, NutritionFacts, compute_health_score
 
+from .barcodes import find_product_by_barcode
 from .medicine_names import is_known_medicine_name
 from .models import CachedExplanation, Product
 from .serializers import (
@@ -76,7 +78,7 @@ class ScanView(APIView):
         serializer.is_valid(raise_exception=True)
         barcode = serializer.validated_data["barcode"]
 
-        product = Product.objects.filter(barcode=barcode).first()
+        product = find_product_by_barcode(barcode)
         if product is None:
             off_data = OpenFoodFactsClient().fetch_product(barcode)
             if off_data is None:
@@ -136,7 +138,9 @@ class ProductDetailView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, barcode):
-        product = get_object_or_404(Product, barcode=barcode)
+        product = find_product_by_barcode(barcode)
+        if product is None:
+            raise Http404
         return Response(ProductSerializer(product).data)
 
 

@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import serializers, status
@@ -9,6 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.products.barcodes import find_product_by_barcode
 from apps.products.models import Product
 
 from .models import ProductDispute, ProductReport, ReportFlag, ReportPhoto
@@ -33,7 +35,9 @@ class ProductReportsView(APIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request, barcode):
-        product = get_object_or_404(Product, barcode=barcode)
+        product = find_product_by_barcode(barcode)
+        if product is None:
+            raise Http404
         reports = (
             ProductReport.objects.filter(product=product, is_hidden=False)
             .select_related("user")
@@ -47,7 +51,9 @@ class ProductReportsView(APIView):
         )
 
     def post(self, request, barcode):
-        product = get_object_or_404(Product, barcode=barcode)
+        product = find_product_by_barcode(barcode)
+        if product is None:
+            raise Http404
         serializer = ReportCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
@@ -122,7 +128,9 @@ class ProductDisputeView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, barcode):
-        product = get_object_or_404(Product, barcode=barcode)
+        product = find_product_by_barcode(barcode)
+        if product is None:
+            raise Http404
         serializer = DisputeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         ProductDispute.objects.create(product=product, user=request.user, **serializer.validated_data)

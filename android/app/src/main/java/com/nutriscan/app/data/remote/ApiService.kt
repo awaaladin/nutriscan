@@ -1,6 +1,8 @@
 package com.nutriscan.app.data.remote
 
 import com.nutriscan.app.data.model.AlertItem
+import com.nutriscan.app.data.model.AskRequest
+import com.nutriscan.app.data.model.AskResponse
 import com.nutriscan.app.data.model.DisputeRequest
 import com.nutriscan.app.data.model.HistoryItem
 import com.nutriscan.app.data.model.LoginRequest
@@ -71,6 +73,9 @@ interface ApiService {
         @Part("nafdac_number") nafdacNumber: RequestBody,
         @Part photos: List<MultipartBody.Part>,
     ): Response<SubmitReportResponse>
+
+    @POST("api/products/{barcode}/ask/")
+    suspend fun askAboutProduct(@Path("barcode") barcode: String, @Body request: AskRequest): Response<AskResponse>
 
     @GET("api/alerts/")
     suspend fun getAlerts(): Response<List<AlertItem>>

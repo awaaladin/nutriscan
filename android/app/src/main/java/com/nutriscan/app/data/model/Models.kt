@@ -16,6 +16,8 @@ data class Product(
     val ingredients_text: String? = null,
     val additives: List<String> = emptyList(),
     val image_url: String? = null,
+    val product_type: String? = null,
+    val is_estimated: Boolean = false,
     val nafdac_number: String? = null,
     val nafdac_verified: Boolean = false,
     val manufacturer_verified: Boolean = false,
@@ -167,4 +169,19 @@ data class DisputeRequest(
     val contact: String,
     val message: String,
     val nafdac_number: String = "",
+)
+
+/** One turn of the "ask about this product" conversation; [role] is "user" or "assistant". */
+data class AskTurn(val role: String, val text: String)
+
+data class AskRequest(val question: String, val history: List<AskTurn> = emptyList())
+
+data class AskSource(val title: String, val url: String)
+
+/** [web_research] is false when the answer came from our own data and the AI's
+ * knowledge only (live web search wasn't available). */
+data class AskResponse(
+    val answer: String,
+    val sources: List<AskSource> = emptyList(),
+    val web_research: Boolean = false,
 )

@@ -125,6 +125,8 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 REST_FRAMEWORK = {
+    # Each "ask about this product" question costs an AI call.
+    "DEFAULT_THROTTLE_RATES": {"ask": "40/hour"},
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
@@ -178,10 +180,11 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 OPEN_FOOD_FACTS_TIMEOUT = 5
 
-# Model for reading product photos. "-latest" alias: a pinned dated model
-# (gemini-2.0-flash) was retired and every photo call 404'd. Override with
-# GEMINI_VISION_MODEL if a specific model is needed.
-GEMINI_VISION_MODEL = os.environ.get("GEMINI_VISION_MODEL", "gemini-flash-latest")
+# AI models, tried in order when one is out of daily quota or retired (free-tier
+# quotas are per model). Comma-separated override: GEMINI_MODELS="a,b,c". Leave
+# unset for the defaults in apps.integrations.vision_identify.DEFAULT_MODELS.
+GEMINI_MODELS = [m.strip() for m in os.environ.get("GEMINI_MODELS", "").split(",") if m.strip()]
+GEMINI_CHAT_MODELS = [m.strip() for m in os.environ.get("GEMINI_CHAT_MODELS", "").split(",") if m.strip()]
 
 # Google Play subscriptions (see apps.subscriptions.play_client). Product IDs
 # must match the subscriptions created in Play Console. With no service

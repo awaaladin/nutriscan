@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.nutriscan.app.data.local.CachedScanEntity
+import com.nutriscan.app.data.model.HistoryItem
 import com.nutriscan.app.data.model.ScanResponse
 import com.nutriscan.app.data.repository.NutriScanRepository
 import com.nutriscan.app.data.repository.ScanOutcome
@@ -102,6 +103,24 @@ class MainViewModel(private val repository: NutriScanRepository) : ViewModel() {
         is ScanOutcome.IdentifyFailed -> ScanUiState.IdentifyFailed(this.barcode.ifBlank { barcode }, message, retake)
         is ScanOutcome.OfflineCached -> ScanUiState.Offline(cached)
         is ScanOutcome.Error -> ScanUiState.Error(message)
+    }
+
+    /** Opens a scan from the user's history in the full product screen. The
+     * history row already carries the whole product and the score it got, so
+     * nothing is fetched again. */
+    fun openScan(item: HistoryItem) {
+        _scanState.value = ScanUiState.Success(
+            ScanResponse(
+                product = item.product,
+                scan_id = item.id,
+                score = item.score,
+                label = item.label,
+                diabetic_risk = item.diabetic_risk,
+                flags = item.flags,
+                is_estimated = item.product.is_estimated,
+                source = "database",
+            ),
+        )
     }
 
     fun resetScanState() {

@@ -34,6 +34,10 @@ sealed class Destination(val route: String) {
         fun build(barcode: String) = "report/$barcode"
     }
 
+    data object Ask : Destination("ask/{barcode}") {
+        fun build(barcode: String) = "ask/$barcode"
+    }
+
     data object Alerts : Destination("alerts")
 
     data object Dispute : Destination("dispute/{barcode}") {

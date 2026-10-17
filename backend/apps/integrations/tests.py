@@ -3,7 +3,7 @@ import os
 from unittest.mock import patch
 
 import requests
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, override_settings
 
 from .vision_identify import IdentifyError, identify_product_from_images
 
@@ -26,6 +26,7 @@ class FakeResponse:
 
 
 @patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"})
+@override_settings(GEMINI_MODELS=["only-model"])
 class VisionIdentifyTests(SimpleTestCase):
     def test_success_sends_all_photos_in_one_request(self):
         with patch(POST, return_value=FakeResponse()) as post:
@@ -95,6 +96,7 @@ class VisionIdentifyTests(SimpleTestCase):
         self.assertTrue(ctx.exception.retake)
 
 
+@override_settings(GEMINI_MODELS=["only-model"])
 class MissingKeyTests(SimpleTestCase):
     def test_missing_key_says_so(self):
         with patch.dict(os.environ, {}, clear=False):

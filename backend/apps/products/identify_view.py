@@ -11,6 +11,7 @@ from apps.integrations.vision_identify import IdentifyError, identify_product_fr
 from apps.scans.models import Scan
 from apps.scoring.engine import compute_health_score
 
+from .barcodes import find_product_by_barcode
 from .identify_helpers import (
     copy_from_twin,
     inherit_nafdac_verification,
@@ -115,7 +116,7 @@ class IdentifyProductView(APIView):
 
         # 1. Our own data first: a barcode we already have never costs an AI call.
         if client_barcode:
-            existing = Product.objects.filter(barcode=client_barcode).first()
+            existing = find_product_by_barcode(client_barcode)
             if existing:
                 return scored_response(request, existing, source="database")
 
@@ -157,7 +158,7 @@ class IdentifyProductView(APIView):
         barcode = client_barcode or (ai_barcode if gtin_checksum_valid(ai_barcode) else "") or f"AI-{uuid4().hex[:12]}"
 
         # The AI may have read a barcode we already hold (the camera never did).
-        existing = Product.objects.filter(barcode=barcode).first()
+        existing = find_product_by_barcode(barcode)
         if existing:
             return scored_response(request, existing, source="database")
 
