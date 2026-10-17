@@ -51,10 +51,19 @@ fun ProductDetailScreen(
                 }
                 Spacer(Modifier.height(16.dp))
                 result.product.integrity?.let { IntegrityCard(it) }
+                val sourceNote = when (result.source) {
+                    "ai" -> "Researched from your photos by AI and saved. Scanning this barcode again is instant."
+                    "twin" -> "Matched by NAFDAC number to a product already in our database."
+                    else -> null
+                }
+                sourceNote?.let {
+                    Spacer(Modifier.height(8.dp))
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                }
                 if (result.is_estimated) {
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "Nutrition values were read from a photo and may be inaccurate.",
+                        "Nutrition values were read from photos and may be inaccurate.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

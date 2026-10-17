@@ -70,6 +70,8 @@ data class ScanResponse(
     val product_type: String? = null,
     val detail: String? = null,
     val is_estimated: Boolean = false,
+    // "database" (already on file, no AI used), "twin" (matched by NAFDAC number) or "ai" (just researched).
+    val source: String? = null,
 )
 
 data class ScanRequest(val barcode: String)

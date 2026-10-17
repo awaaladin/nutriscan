@@ -7,8 +7,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.ImageCapture
-import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -53,13 +51,13 @@ import com.nutriscan.app.scanner.BarcodeAnalyzer
 import com.nutriscan.app.ui.MainViewModel
 import com.nutriscan.app.ui.components.NsButton
 import com.nutriscan.app.ui.components.NsOutlinedButton
-import java.io.File
 
 @Composable
 fun ScannerScreen(
     viewModel: MainViewModel,
     onBack: () -> Unit,
     onBarcodeCaptured: () -> Unit,
+    onTakePhotos: () -> Unit,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -79,65 +77,13 @@ fun ScannerScreen(
     var manualBarcode by remember { mutableStateOf("") }
     var hasHandledResult by remember { mutableStateOf(false) }
     var camera by remember { mutableStateOf<Camera?>(null) }
-    var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
     var torchOn by remember { mutableStateOf(false) }
 
     fun capture(barcode: String) {
         if (hasHandledResult || barcode.isBlank()) return
         hasHandledResult = true
-
-        val captureUseCase = imageCapture
-        if (captureUseCase == null) {
-            // No camera frame available (e.g. manual barcode entry) -- scan still
-            // works, it just can't fall back to photo identification if not found.
-            viewModel.onBarcodeScanned(barcode)
-            onBarcodeCaptured()
-            return
-        }
-
-        val photoFile = File(context.cacheDir, "scan_${System.currentTimeMillis()}.jpg")
-        val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
-        captureUseCase.takePicture(
-            outputOptions,
-            ContextCompat.getMainExecutor(context),
-            object : ImageCapture.OnImageSavedCallback {
-                override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                    viewModel.onBarcodeScanned(barcode, photoFile)
-                    onBarcodeCaptured()
-                }
-
-                override fun onError(exc: ImageCaptureException) {
-                    viewModel.onBarcodeScanned(barcode)
-                    onBarcodeCaptured()
-                }
-            },
-        )
-    }
-
-    /** For when the barcode never scans at all -- no reading to fall back
-     * from, so this skips straight to Gemini reading the photo (it'll pull
-     * the barcode digits off the label itself if they're visible). */
-    fun capturePhotoWithoutBarcode() {
-        if (hasHandledResult) return
-        val captureUseCase = imageCapture ?: return
-        hasHandledResult = true
-
-        val photoFile = File(context.cacheDir, "scan_${System.currentTimeMillis()}.jpg")
-        val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
-        captureUseCase.takePicture(
-            outputOptions,
-            ContextCompat.getMainExecutor(context),
-            object : ImageCapture.OnImageSavedCallback {
-                override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                    viewModel.onPhotoCapturedWithoutBarcode(photoFile)
-                    onBarcodeCaptured()
-                }
-
-                override fun onError(exc: ImageCaptureException) {
-                    hasHandledResult = false
-                }
-            },
-        )
+        viewModel.onBarcodeScanned(barcode)
+        onBarcodeCaptured()
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -163,7 +109,6 @@ fun ScannerScreen(
                                             BarcodeAnalyzer { barcode -> capture(barcode) },
                                         )
                                     }
-                                val capture = ImageCapture.Builder().build()
                                 try {
                                     cameraProvider.unbindAll()
                                     camera = cameraProvider.bindToLifecycle(
@@ -171,9 +116,7 @@ fun ScannerScreen(
                                         CameraSelector.DEFAULT_BACK_CAMERA,
                                         preview,
                                         analysis,
-                                        capture,
                                     )
-                                    imageCapture = capture
                                 } catch (_: Exception) {
                                     // Binding can fail on emulators without a camera; manual entry still works.
                                 }
@@ -235,7 +178,10 @@ fun ScannerScreen(
                     Spacer(Modifier.height(6.dp))
                     NsOutlinedButton(
                         text = "Take a photo instead",
-                        onClick = { capturePhotoWithoutBarcode() },
+                        onClick = {
+                            viewModel.onNoBarcode()
+                            onTakePhotos()
+                        },
                     )
                 }
             } else {

@@ -8,6 +8,12 @@ sealed class Destination(val route: String) {
     data object Scanner : Destination("scanner")
     data object Analyzing : Destination("analyzing")
 
+    /** Photographing a product we don't know (or retaking the photos after a
+     * failed attempt). "none" stands in for "no barcode was scanned". */
+    data object Capture : Destination("capture/{barcode}") {
+        fun build(barcode: String?) = "capture/${barcode?.takeIf { it.isNotBlank() } ?: "none"}"
+    }
+
     data object ProductDetail : Destination("product/{barcode}") {
         fun build(barcode: String) = "product/$barcode"
     }

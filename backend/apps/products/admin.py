@@ -24,8 +24,10 @@ class ProductAdmin(admin.ModelAdmin):
 
     @admin.action(description="Mark NAFDAC number verified (after checking the Greenbook)")
     def mark_nafdac_verified(self, request, queryset):
-        # A number must exist to be verified.
-        queryset.exclude(nafdac_number="").update(nafdac_verified=True)
+        # A number must exist to be verified. The registry check is per number,
+        # so it covers every product carrying it (other pack sizes, AI-saved copies).
+        numbers = set(queryset.exclude(nafdac_number="").values_list("nafdac_number", flat=True))
+        Product.objects.filter(nafdac_number__in=numbers).update(nafdac_verified=True)
 
     @admin.action(description="Mark manufacturer verified")
     def mark_manufacturer_verified(self, request, queryset):

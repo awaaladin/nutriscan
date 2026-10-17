@@ -12,68 +12,101 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.io.File
 
+/** Photos needed before we'll research an unknown product: one per side
+ * (front, back, and a side) gives the AI the name, the nutrition/NAFDAC panel
+ * and corroboration in a single read. */
+const val MIN_PRODUCT_PHOTOS = 3
+const val MAX_PRODUCT_PHOTOS = 6
+
 sealed class ScanUiState {
     data object Idle : ScanUiState()
-    data object Loading : ScanUiState()
+
+    /** [message] says what is actually happening right now, not a canned loop. */
+    data class Loading(val message: String) : ScanUiState()
     data class Success(val result: ScanResponse) : ScanUiState()
-    data class NotFound(val barcode: String) : ScanUiState()
-    data class PhotoUnclear(val barcode: String) : ScanUiState()
+
+    /** Not in our database: the app moves to the photo screen to research it. */
+    data class NeedsPhotos(val barcode: String?) : ScanUiState()
+
+    /** Photo research failed; [message] is the server's reason, [retake] whether new photos could fix it. */
+    data class IdentifyFailed(val barcode: String?, val message: String, val retake: Boolean) : ScanUiState()
     data class NonFood(val productName: String, val message: String) : ScanUiState()
     data class Offline(val cached: CachedScanEntity) : ScanUiState()
     data class Error(val message: String) : ScanUiState()
 }
 
-/** Holds the in-flight/last scan result so the Scanner, Product Detail and
- * Health Analysis screens can share it without re-fetching. */
+/** Holds the in-flight/last scan result so the Scanner, Photo, Analyzing, Product
+ * Detail and Health Analysis screens can share it without re-fetching. */
 class MainViewModel(private val repository: NutriScanRepository) : ViewModel() {
     private val _scanState = MutableStateFlow<ScanUiState>(ScanUiState.Idle)
     val scanState: StateFlow<ScanUiState> = _scanState
 
-    /** [photoFile] is the frame captured at the moment the barcode was read.
-     * If the barcode isn't in Open Food Facts or our own table, it's used as
-     * a fallback to identify the product from the photo instead of sending
-     * the user straight to manual entry. */
-    fun onBarcodeScanned(barcode: String, photoFile: File? = null) {
+    /** Photos taken so far for the product being researched. Kept here, not in
+     * the photo screen, so a failed attempt keeps them: the retake screen only
+     * replaces the bad ones instead of starting over. */
+    private val _photos = MutableStateFlow<List<File>>(emptyList())
+    val photos: StateFlow<List<File>> = _photos
+
+    /** Step 1: look the barcode up in our database (and Open Food Facts). If it
+     * isn't known anywhere, the state becomes [ScanUiState.NeedsPhotos] and the
+     * app opens the photo screen -- no dead end, no manual form first. */
+    fun onBarcodeScanned(barcode: String) {
         if (_scanState.value is ScanUiState.Loading) return
+        clearPhotos()
         viewModelScope.launch {
-            _scanState.value = ScanUiState.Loading
-            val outcome = repository.scan(barcode)
-            val triedPhoto = outcome is ScanOutcome.NotFound && photoFile != null
-            val resolved = if (triedPhoto) {
-                repository.identifyProduct(barcode, photoFile!!)
-            } else {
-                outcome
+            _scanState.value = ScanUiState.Loading("Checking our database for barcode $barcode…")
+            _scanState.value = when (val outcome = repository.scan(barcode)) {
+                is ScanOutcome.NotFound -> ScanUiState.NeedsPhotos(barcode)
+                else -> outcome.toUiState()
             }
-            _scanState.value = resolved.toUiState(triedPhoto)
         }
     }
 
-    /** Entry point when the live barcode scanner never read anything at all --
-     * the user chose to photograph the product directly instead of hunting
-     * for an angle that scans. There's no barcode to fall back from, so this
-     * skips straight to Gemini reading the photo (barcode included, if it's
-     * visible in frame -- see apps.integrations.vision_identify). */
-    fun onPhotoCapturedWithoutBarcode(photoFile: File) {
+    /** The scanner never read a barcode (or the user chose to skip it): go
+     * straight to the photo screen. The server reads the barcode off the photos. */
+    fun onNoBarcode() {
+        clearPhotos()
+        _scanState.value = ScanUiState.NeedsPhotos(null)
+    }
+
+    fun setPhotos(files: List<File>) {
+        _photos.value = files.take(MAX_PRODUCT_PHOTOS)
+    }
+
+    fun clearPhotos() {
+        _photos.value = emptyList()
+    }
+
+    /** Step 2: research the product from its photos. The server answers from
+     * its own data first (barcode, then [nafdacNumber]) and only then calls the
+     * AI -- once, with all the photos. */
+    fun researchFromPhotos(barcode: String?, nafdacNumber: String?) {
         if (_scanState.value is ScanUiState.Loading) return
+        val files = _photos.value
+        if (files.size < MIN_PRODUCT_PHOTOS) return
         viewModelScope.launch {
-            _scanState.value = ScanUiState.Loading
-            val resolved = repository.identifyProduct(barcode = null, photoFile)
-            _scanState.value = resolved.toUiState(triedPhoto = true)
+            _scanState.value = ScanUiState.Loading(
+                "Checking our database, then reading ${files.size} photos with AI if it's new " +
+                    "(this can take up to 30 seconds)…",
+            )
+            val outcome = repository.identifyProduct(barcode, nafdacNumber, files)
+            if (outcome is ScanOutcome.Success) clearPhotos()
+            _scanState.value = outcome.toUiState(barcode)
         }
     }
 
-    private fun ScanOutcome.toUiState(triedPhoto: Boolean): ScanUiState = when (this) {
+    private fun ScanOutcome.toUiState(barcode: String? = null): ScanUiState = when (this) {
         is ScanOutcome.Success -> ScanUiState.Success(result)
         is ScanOutcome.NonFood -> ScanUiState.NonFood(productName, message)
-        // Only a photo attempt gets the "retake it" message -- a plain
-        // NotFound with no photo to fall back on goes straight to manual entry.
-        is ScanOutcome.NotFound -> if (triedPhoto) ScanUiState.PhotoUnclear(barcode) else ScanUiState.NotFound(barcode)
+        is ScanOutcome.NotFound -> ScanUiState.NeedsPhotos(this.barcode.ifBlank { barcode })
+        is ScanOutcome.IdentifyFailed -> ScanUiState.IdentifyFailed(this.barcode.ifBlank { barcode }, message, retake)
         is ScanOutcome.OfflineCached -> ScanUiState.Offline(cached)
         is ScanOutcome.Error -> ScanUiState.Error(message)
     }
 
     fun resetScanState() {
         _scanState.value = ScanUiState.Idle
+        clearPhotos()
     }
 
     class Factory(private val repository: NutriScanRepository) : ViewModelProvider.Factory {

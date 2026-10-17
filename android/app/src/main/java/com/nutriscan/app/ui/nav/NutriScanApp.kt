@@ -44,6 +44,7 @@ import com.nutriscan.app.ui.screens.HomeScreen
 import com.nutriscan.app.ui.screens.InsightsScreen
 import com.nutriscan.app.ui.screens.LoginScreen
 import com.nutriscan.app.ui.screens.OnboardingScreen
+import com.nutriscan.app.ui.screens.PhotoCaptureScreen
 import com.nutriscan.app.ui.screens.ProInsightsScreen
 import com.nutriscan.app.ui.screens.ReportsScreen
 import com.nutriscan.app.ui.screens.SubmitReportScreen
@@ -172,6 +173,7 @@ fun NutriScanApp() {
                     viewModel = mainViewModel,
                     onBack = { navController.popBackStack() },
                     onBarcodeCaptured = { navController.navigate(Destination.Analyzing.route) },
+                    onTakePhotos = { navController.navigate(Destination.Capture.build(null)) },
                 )
             }
             animatedComposable(Destination.Analyzing.route) {
@@ -182,12 +184,37 @@ fun NutriScanApp() {
                             popUpTo(Destination.Home.route)
                         }
                     },
-                    onNotFound = { barcode ->
+                    // Not in our database: straight to the photo screen, not a dead end.
+                    onNeedsPhotos = { barcode ->
+                        navController.navigate(Destination.Capture.build(barcode)) {
+                            popUpTo(Destination.Analyzing.route) { inclusive = true }
+                        }
+                    },
+                    // A failed attempt reopens the photo screen with the earlier photos kept.
+                    onRetakePhotos = { barcode ->
+                        navController.navigate(Destination.Capture.build(barcode)) {
+                            popUpTo(Destination.Analyzing.route) { inclusive = true }
+                        }
+                    },
+                    onManualEntry = { barcode ->
                         navController.navigate(Destination.SubmitProduct.build(barcode)) {
                             popUpTo(Destination.Home.route)
                         }
                     },
                     onRetry = { navController.popBackStack(Destination.Scanner.route, inclusive = false) },
+                )
+            }
+            animatedComposable(Destination.Capture.route) { backStackEntry ->
+                val barcode = backStackEntry.arguments?.getString("barcode")?.takeIf { it != "none" }
+                PhotoCaptureScreen(
+                    viewModel = mainViewModel,
+                    barcode = barcode,
+                    onBack = { navController.popBackStack() },
+                    onSubmit = {
+                        navController.navigate(Destination.Analyzing.route) {
+                            popUpTo(Destination.Capture.route) { inclusive = true }
+                        }
+                    },
                 )
             }
             animatedComposable(Destination.ProductDetail.route) {

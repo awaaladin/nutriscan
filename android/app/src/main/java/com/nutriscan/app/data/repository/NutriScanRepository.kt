@@ -21,7 +21,9 @@ import com.nutriscan.app.data.model.TokenPair
 import com.nutriscan.app.data.model.UserPreferences
 import com.nutriscan.app.data.model.VerifyPurchaseRequest
 import com.nutriscan.app.data.remote.ApiService
+import com.nutriscan.app.data.remote.describeFailure
 import com.nutriscan.app.data.remote.friendlyErrorMessage
+import com.nutriscan.app.data.remote.parseServerError
 import kotlinx.coroutines.flow.Flow
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
@@ -34,6 +36,10 @@ sealed class ScanOutcome {
     data class Success(val result: ScanResponse) : ScanOutcome()
     data class NonFood(val productName: String, val message: String) : ScanOutcome()
     data class NotFound(val barcode: String) : ScanOutcome()
+
+    /** Photo research failed. [message] says why (from the server); [retake]
+     * is true when better photos could fix it. */
+    data class IdentifyFailed(val barcode: String, val message: String, val retake: Boolean) : ScanOutcome()
     data class OfflineCached(val cached: CachedScanEntity) : ScanOutcome()
     data class Error(val message: String) : ScanOutcome()
 }
@@ -95,7 +101,7 @@ class NutriScanRepository(
                 }
             }
             response.code() == 404 -> ScanOutcome.NotFound(barcode)
-            else -> ScanOutcome.Error(friendlyErrorMessage(response.code()))
+            else -> ScanOutcome.Error(describeFailure(response))
         }
     } catch (e: IOException) {
         val cached = cachedScanDao.getByBarcode(barcode)
@@ -106,21 +112,17 @@ class NutriScanRepository(
         }
     }
 
-    /** Identifies a product from a photo via Gemini instead of asking the user
-     * to type in nutrition facts by hand. [barcode] is the camera's live
-     * reading when this is a fallback from [scan] coming back NotFound, or
-     * null when the live scanner never read a barcode at all and the user
-     * chose to photograph the product directly -- Gemini then reads the
-     * barcode straight off the photo (see apps.integrations.vision_identify
-     * server-side). Best-effort -- see ScanResponse.is_estimated. */
-    suspend fun identifyProduct(barcode: String?, photoFile: File): ScanOutcome = try {
-        val barcodePart = barcode?.takeIf { it.isNotBlank() }?.toRequestBody("text/plain".toMediaType())
-        val imagePart = MultipartBody.Part.createFormData(
-            "image",
-            photoFile.name,
-            photoFile.asRequestBody("image/jpeg".toMediaType()),
-        )
-        val response = api.identifyProduct(barcodePart, imagePart)
+    /** Researches a product that isn't in our database from photos of its sides.
+     * The server checks its own data first (barcode, then [nafdacNumber]) and only
+     * calls the AI if neither matches, saving the result so the next scan of this
+     * barcode is instant. [barcode] is null when the live scanner never read one --
+     * the server then reads it off the photos. */
+    suspend fun identifyProduct(barcode: String?, nafdacNumber: String?, photos: List<File>): ScanOutcome = try {
+        fun text(value: String?) = value?.takeIf { it.isNotBlank() }?.toRequestBody("text/plain".toMediaType())
+        val parts = photos.map {
+            MultipartBody.Part.createFormData("images", it.name, it.asRequestBody("image/jpeg".toMediaType()))
+        }
+        val response = api.identifyProduct(text(barcode), text(nafdacNumber), parts)
         when {
             response.isSuccessful -> {
                 val body = requireNotNull(response.body())
@@ -128,8 +130,7 @@ class NutriScanRepository(
                     ScanOutcome.NonFood(body.product.name, body.detail.orEmpty())
                 } else if (body.score != null && body.label != null && body.diabetic_risk != null) {
                     // body.product.barcode is the one actually stored server-side --
-                    // when [barcode] was null, that's either what Gemini read off the
-                    // photo or a synthetic one, never the (absent) client value.
+                    // when [barcode] was null, that's what the AI read or a synthetic one.
                     cachedScanDao.upsert(
                         CachedScanEntity(
                             barcode = body.product.barcode,
@@ -144,60 +145,25 @@ class NutriScanRepository(
                     )
                     ScanOutcome.Success(body)
                 } else {
-                    ScanOutcome.NotFound(barcode.orEmpty())
+                    ScanOutcome.IdentifyFailed(
+                        barcode.orEmpty(),
+                        "The server returned an incomplete result for this product. Please retake the photos.",
+                        retake = true,
+                    )
                 }
             }
-            response.code() == 404 -> ScanOutcome.NotFound(barcode.orEmpty())
-            else -> ScanOutcome.Error(friendlyErrorMessage(response.code()))
+            else -> {
+                val error = parseServerError(response)
+                ScanOutcome.IdentifyFailed(
+                    barcode.orEmpty(),
+                    describeFailure(response),
+                    // Without structured info, assume photos might help for a client error.
+                    retake = error?.retake ?: (response.code() in 400..499),
+                )
+            }
         }
     } catch (e: IOException) {
-        ScanOutcome.Error("You're offline, so NutriScan can't identify this product from a photo right now.")
-    }
-
-    suspend fun reports(barcode: String): Result<ReportsResponse> = runCatching {
-        val response = api.getReports(barcode)
-        if (!response.isSuccessful) error(friendlyErrorMessage(response.code()))
-        requireNotNull(response.body())
-    }
-
-    suspend fun submitReport(
-        barcode: String,
-        verdict: String,
-        comment: String,
-        whereBought: String,
-        batchNumber: String,
-        nafdacNumber: String,
-        photos: List<File>,
-    ): Result<SubmitReportResponse> = runCatching {
-        fun text(value: String) = value.toRequestBody("text/plain".toMediaType())
-        val photoParts = photos.map {
-            MultipartBody.Part.createFormData("photos", it.name, it.asRequestBody("image/jpeg".toMediaType()))
-        }
-        val response = api.submitReport(
-            barcode, text(verdict), text(comment), text(whereBought), text(batchNumber), text(nafdacNumber), photoParts,
-        )
-        if (!response.isSuccessful) {
-            val message = if (response.code() == 400) "Couldn't post that report -- check the NAFDAC number format (e.g. A4-1234) and your photos (max 4, under 5MB each)." else friendlyErrorMessage(response.code())
-            error(message)
-        }
-        requireNotNull(response.body())
-    }
-
-    suspend fun alerts(): Result<List<AlertItem>> = runCatching {
-        val response = api.getAlerts()
-        if (!response.isSuccessful) error(friendlyErrorMessage(response.code()))
-        requireNotNull(response.body())
-    }
-
-    suspend fun submitDispute(barcode: String, request: DisputeRequest): Result<Unit> = runCatching {
-        val response = api.submitDispute(barcode, request)
-        if (!response.isSuccessful) error(friendlyErrorMessage(response.code()))
-    }
-
-    suspend fun flagReport(reportId: Int, reason: String = ""): Result<Unit> = runCatching {
-        val response = api.flagReport(reportId, mapOf("reason" to reason))
-        if (response.code() == 400) error("You can't flag your own report.")
-        if (!response.isSuccessful) error(friendlyErrorMessage(response.code()))
+        ScanOutcome.Error("No connection: the photos couldn't be sent. Check your internet and try again.")
     }
 
     fun observeCachedScans(): Flow<List<CachedScanEntity>> = cachedScanDao.observeAll()

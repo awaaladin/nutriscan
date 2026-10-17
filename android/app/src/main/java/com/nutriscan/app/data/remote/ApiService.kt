@@ -48,12 +48,13 @@ interface ApiService {
     @Multipart
     @POST("api/products/identify/")
     suspend fun identifyProduct(
-        // Null when the live barcode scanner never read anything at all (not
-        // just "read it but it wasn't in any DB") -- Gemini then reads the
-        // barcode digits straight off the photo instead. Retrofit omits a
-        // null @Part entirely rather than sending an empty value.
+        // Null when no barcode was read at all -- the server then reads it off the photos.
+        // Retrofit omits a null @Part entirely rather than sending an empty value.
         @Part("barcode") barcode: RequestBody?,
-        @Part image: MultipartBody.Part,
+        // Optional NAFDAC number typed by the user: if we already have it, no AI call is made.
+        @Part("nafdac_number") nafdacNumber: RequestBody?,
+        // One part per side of the product (the app requires at least 3).
+        @Part images: List<MultipartBody.Part>,
     ): Response<ScanResponse>
 
     @GET("api/products/{barcode}/reports/")

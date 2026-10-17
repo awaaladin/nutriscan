@@ -178,6 +178,11 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 OPEN_FOOD_FACTS_TIMEOUT = 5
 
+# Model for reading product photos. "-latest" alias: a pinned dated model
+# (gemini-2.0-flash) was retired and every photo call 404'd. Override with
+# GEMINI_VISION_MODEL if a specific model is needed.
+GEMINI_VISION_MODEL = os.environ.get("GEMINI_VISION_MODEL", "gemini-flash-latest")
+
 # Google Play subscriptions (see apps.subscriptions.play_client). Product IDs
 # must match the subscriptions created in Play Console. With no service
 # account configured, purchase verification fails closed -- Pro is never

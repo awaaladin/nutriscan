@@ -1,5 +1,3 @@
-from uuid import uuid4
-
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -8,11 +6,8 @@ from rest_framework.views import APIView
 
 from apps.integrations.llm_explanations import get_explanation_provider
 from apps.integrations.open_food_facts import OpenFoodFactsClient
-from apps.integrations.vision_identify import identify_product_from_image
 from apps.scans.models import Scan
 from apps.scoring.engine import HealthScoreResult, NutritionFacts, compute_health_score
-
-from apps.community.nafdac import normalize_nafdac_number
 
 from .medicine_names import is_known_medicine_name
 from .models import CachedExplanation, Product
@@ -130,6 +125,8 @@ class ScanView(APIView):
                 "diabetic_risk": result.diabetic_risk.value,
                 "flags": result.flags,
                 "insufficient_data": result.insufficient_data,
+                "is_estimated": product.is_estimated,
+                "source": "database",
                 "explanation": explanation,
             }
         )
@@ -177,107 +174,6 @@ class ProductSubmissionView(APIView):
 
         serializer.save(submitted_by=request.user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-
-class IdentifyProductView(APIView):
-    """Identifies a product from a photo via Gemini (see
-    apps.integrations.vision_identify). Two callers hit this:
-
-    1. A live barcode scan that came back NotFound -- barcode is the camera's
-       reading, passed along so the photo result still attaches to it.
-    2. The camera's live scanner never read a barcode at all (damaged label,
-       bad angle, no barcode in frame) -- barcode is blank, and Gemini reads
-       the printed digits straight out of the photo instead, same as a human
-       squinting at the package would.
-
-    If neither source yields a barcode, a synthetic one is generated so the
-    required/unique Product.barcode field still has something to key on --
-    this means two such photos of the same real product (both unreadable)
-    will create two separate rows rather than merging, a known limitation.
-
-    Best-effort either way -- results are marked is_estimated so the client
-    can disclose that the nutrition numbers came from Gemini reading the
-    label photo, not a verified source."""
-
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        client_barcode = request.data.get("barcode", "").strip()
-        image = request.FILES.get("image")
-        if not image:
-            return Response({"detail": "image is required."}, status=status.HTTP_400_BAD_REQUEST)
-
-        result = identify_product_from_image(image.read(), image.content_type or "image/jpeg")
-        if result is None:
-            return Response(
-                {
-                    "detail": "Couldn't identify this product from the photo.",
-                    "action": "submit_product",
-                    "barcode": client_barcode,
-                },
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        barcode = client_barcode or (result.get("barcode") or "").strip() or f"AI-{uuid4().hex[:12]}"
-
-        product_type = result.get("product_type", "food")
-        nafdac = normalize_nafdac_number(result.get("nafdac_number"))
-        product, _ = Product.objects.update_or_create(
-            barcode=barcode,
-            defaults={
-                "name": result.get("name") or "Unidentified product",
-                "brand": result.get("brand", ""),
-                "source": Product.Source.AI_VISION,
-                "product_type": product_type,
-                "is_estimated": True,
-                # Only overwrite a stored number when this photo actually showed one.
-                **({"nafdac_number": nafdac} if nafdac else {}),
-                "ingredients_text": result.get("ingredients_text", ""),
-                "calories_kcal": result.get("calories_kcal"),
-                "sugar_g": result.get("sugar_g"),
-                "saturated_fat_g": result.get("saturated_fat_g"),
-                "sodium_mg": result.get("sodium_mg"),
-                "carbohydrates_g": result.get("carbohydrates_g"),
-                "fiber_g": result.get("fiber_g"),
-                "protein_g": result.get("protein_g"),
-            },
-        )
-
-        if product.product_type != Product.ProductType.FOOD:
-            return Response(
-                {
-                    "product": ProductSerializer(product).data,
-                    "product_type": product.product_type,
-                    "is_estimated": True,
-                    "detail": _non_food_message(product) + " (Identified from photo, not a scanned barcode match.)",
-                }
-            )
-
-        health_result = compute_health_score(_nutrition_from_product(product), product.ingredients_text)
-        explanation = _get_or_create_explanation(product, health_result)
-
-        scan = Scan.objects.create(
-            user=request.user,
-            product=product,
-            score=health_result.score,
-            label=health_result.label.value,
-            diabetic_risk=health_result.diabetic_risk.value,
-            flags=health_result.flags,
-        )
-
-        return Response(
-            {
-                "scan_id": scan.id,
-                "product": ProductSerializer(product).data,
-                "score": health_result.score,
-                "label": health_result.label.value,
-                "diabetic_risk": health_result.diabetic_risk.value,
-                "flags": health_result.flags,
-                "insufficient_data": health_result.insufficient_data,
-                "is_estimated": True,
-                "explanation": explanation + " Note: this was read from a photo, not a verified nutrition label match -- double-check against the package.",
-            }
-        )
 
 
 class AnalyzeView(APIView):

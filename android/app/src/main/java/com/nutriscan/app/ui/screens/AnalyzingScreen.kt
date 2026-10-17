@@ -1,6 +1,5 @@
 package com.nutriscan.app.ui.screens
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
@@ -42,46 +41,42 @@ import com.nutriscan.app.ui.MainViewModel
 import com.nutriscan.app.ui.ScanUiState
 import com.nutriscan.app.ui.components.AnimatedGradientBackground
 import com.nutriscan.app.ui.components.HealthLabelChip
+import com.nutriscan.app.ui.components.NsButton
 import com.nutriscan.app.ui.components.NsOutlinedButton
 import com.nutriscan.app.ui.theme.NsCream
 import com.nutriscan.app.ui.theme.NsEmerald900
 import com.nutriscan.app.ui.theme.NsGold300
 import kotlinx.coroutines.delay
 
-private val statusPhrases = listOf(
-    "Reading barcode…",
-    "Fetching product data…",
-    "Applying WHO thresholds…",
-    "Checking diabetic risk…",
-)
-
 /**
- * Sits between a captured barcode and a result. Success/NotFound auto-advance
- * once the network call resolves. Error and Offline are terminal states that
- * stay on this screen — Error so the user can read what happened before
- * retrying, Offline because the cached record doesn't carry full nutrition
- * data, so there's nowhere richer to send them.
+ * Sits between a scan/photo submission and a result, and always says what is
+ * happening or what went wrong -- never an endless generic spinner:
+ *  - Loading shows the real current step plus a running seconds counter.
+ *  - Success and NeedsPhotos move on automatically (a product that isn't in our
+ *    database goes straight to the photo screen, not a dead end).
+ *  - Failures stay here with the specific reason and clear next steps.
  */
 @Composable
 fun AnalyzingScreen(
     viewModel: MainViewModel,
     onSuccess: (barcode: String) -> Unit,
-    onNotFound: (barcode: String) -> Unit,
+    onNeedsPhotos: (barcode: String?) -> Unit,
+    onRetakePhotos: (barcode: String?) -> Unit,
+    onManualEntry: (barcode: String) -> Unit,
     onRetry: () -> Unit,
 ) {
     val scanState by viewModel.scanState.collectAsState()
-    var statusIndex by remember { mutableIntStateOf(0) }
+    var elapsedSeconds by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(scanState) {
+        elapsedSeconds = 0
         while (scanState is ScanUiState.Loading) {
-            delay(900)
-            statusIndex = (statusIndex + 1) % statusPhrases.size
+            delay(1000)
+            elapsedSeconds++
         }
         when (val state = scanState) {
             is ScanUiState.Success -> onSuccess(state.result.product.barcode)
-            is ScanUiState.NotFound -> onNotFound(state.barcode)
-            // PhotoUnclear stays on this screen (unlike NotFound) so the user
-            // can retake the shot instead of being dropped straight into manual entry.
+            is ScanUiState.NeedsPhotos -> onNeedsPhotos(state.barcode)
             else -> Unit
         }
     }
@@ -101,82 +96,43 @@ fun AnalyzingScreen(
             verticalArrangement = Arrangement.Center,
         ) {
             when (val state = scanState) {
-                is ScanUiState.Error -> {
-                    AnimatedVisibility(
-                        visible = true,
-                        enter = fadeIn(tween(350)) + slideInVertically(tween(350)) { it / 4 },
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("Couldn't complete this scan", style = MaterialTheme.typography.titleLarge, color = NsCream)
-                            Spacer(Modifier.height(12.dp))
-                            Text(state.message, color = NsCream.copy(alpha = 0.8f), textAlign = TextAlign.Center)
-                            Spacer(Modifier.height(24.dp))
-                            NsOutlinedButton(text = "Try again", onClick = onRetry)
+                is ScanUiState.IdentifyFailed -> Message(
+                    title = if (state.retake) "Couldn't read the photos" else "Couldn't research this product",
+                    body = state.message,
+                ) {
+                    NsButton(
+                        text = if (state.retake) "Retake photos" else "Try again",
+                        onClick = { onRetakePhotos(state.barcode) },
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    state.barcode?.takeIf { it.isNotBlank() }?.let { barcode ->
+                        TextButton(onClick = { onManualEntry(barcode) }) {
+                            Text("Enter the details manually instead", color = NsGold300)
                         }
                     }
+                    TextButton(onClick = onRetry) { Text("Scan something else", color = NsGold300) }
                 }
-                is ScanUiState.PhotoUnclear -> {
-                    AnimatedVisibility(
-                        visible = true,
-                        enter = fadeIn(tween(350)) + slideInVertically(tween(350)) { it / 4 },
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("Couldn't recognize this product", style = MaterialTheme.typography.titleLarge, color = NsCream)
-                            Spacer(Modifier.height(12.dp))
-                            Text(
-                                "This barcode isn't in our database yet, and the photo wasn't clear enough to identify it. " +
-                                    "Try again with the label well-lit, in focus, and filling the frame.",
-                                color = NsCream.copy(alpha = 0.8f),
-                                textAlign = TextAlign.Center,
-                            )
-                            Spacer(Modifier.height(24.dp))
-                            NsOutlinedButton(text = "Retake photo", onClick = onRetry)
-                            Spacer(Modifier.height(8.dp))
-                            TextButton(onClick = { onNotFound(state.barcode) }) {
-                                Text("Enter details manually instead", color = NsGold300)
-                            }
-                        }
-                    }
+                is ScanUiState.Error -> Message(title = "Couldn't complete this scan", body = state.message) {
+                    NsOutlinedButton(text = "Try again", onClick = onRetry)
                 }
-                is ScanUiState.NonFood -> {
-                    AnimatedVisibility(
-                        visible = true,
-                        enter = fadeIn(tween(350)) + slideInVertically(tween(350)) { it / 4 },
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("Not a packaged food", style = MaterialTheme.typography.titleLarge, color = NsCream)
-                            Spacer(Modifier.height(8.dp))
-                            Text(state.productName, style = MaterialTheme.typography.titleMedium, color = NsGold300)
-                            Spacer(Modifier.height(12.dp))
-                            Text(state.message, color = NsCream.copy(alpha = 0.8f), textAlign = TextAlign.Center)
-                            Spacer(Modifier.height(24.dp))
-                            NsOutlinedButton(text = "Scan something else", onClick = onRetry)
-                        }
-                    }
+                is ScanUiState.NonFood -> Message(
+                    title = "Not a packaged food",
+                    body = state.message,
+                    subtitle = state.productName,
+                ) {
+                    NsOutlinedButton(text = "Scan something else", onClick = onRetry)
                 }
-                is ScanUiState.Offline -> {
-                    AnimatedVisibility(
-                        visible = true,
-                        enter = fadeIn(tween(350)) + slideInVertically(tween(350)) { it / 4 },
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("You're offline", style = MaterialTheme.typography.titleLarge, color = NsCream)
-                            Spacer(Modifier.height(8.dp))
-                            Text(
-                                "Showing the last result saved for this product.",
-                                color = NsCream.copy(alpha = 0.75f),
-                                textAlign = TextAlign.Center,
-                            )
-                            Spacer(Modifier.height(20.dp))
-                            Text(state.cached.productName, style = MaterialTheme.typography.titleMedium, color = NsCream)
-                            Spacer(Modifier.height(8.dp))
-                            HealthLabelChip(state.cached.label)
-                            Spacer(Modifier.height(8.dp))
-                            Text("${state.cached.score}/10", style = MaterialTheme.typography.headlineSmall, color = NsGold300)
-                            Spacer(Modifier.height(24.dp))
-                            NsOutlinedButton(text = "Scan again", onClick = onRetry)
-                        }
-                    }
+                is ScanUiState.Offline -> Message(
+                    title = "You're offline",
+                    body = "Showing the last result saved for this product.",
+                ) {
+                    Text(state.cached.productName, style = MaterialTheme.typography.titleMedium, color = NsCream)
+                    Spacer(Modifier.height(8.dp))
+                    HealthLabelChip(state.cached.label)
+                    Spacer(Modifier.height(8.dp))
+                    Text("${state.cached.score}/10", style = MaterialTheme.typography.headlineSmall, color = NsGold300)
+                    Spacer(Modifier.height(24.dp))
+                    NsOutlinedButton(text = "Scan again", onClick = onRetry)
                 }
                 else -> {
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.size(140.dp)) {
@@ -194,16 +150,45 @@ fun AnalyzingScreen(
                         )
                     }
                     Spacer(Modifier.height(40.dp))
-                    AnimatedContent(targetState = statusIndex, label = "statusText") { index ->
-                        Text(
-                            statusPhrases[index],
-                            style = MaterialTheme.typography.titleMedium,
-                            color = NsCream,
-                            textAlign = TextAlign.Center,
-                        )
-                    }
+                    Text(
+                        (state as? ScanUiState.Loading)?.message ?: "Working…",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = NsCream,
+                        textAlign = TextAlign.Center,
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        "${elapsedSeconds}s",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = NsCream.copy(alpha = 0.6f),
+                    )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun Message(
+    title: String,
+    body: String,
+    subtitle: String? = null,
+    actions: @Composable () -> Unit,
+) {
+    AnimatedVisibility(
+        visible = true,
+        enter = fadeIn(tween(350)) + slideInVertically(tween(350)) { it / 4 },
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(title, style = MaterialTheme.typography.titleLarge, color = NsCream, textAlign = TextAlign.Center)
+            subtitle?.let {
+                Spacer(Modifier.height(8.dp))
+                Text(it, style = MaterialTheme.typography.titleMedium, color = NsGold300)
+            }
+            Spacer(Modifier.height(12.dp))
+            Text(body, color = NsCream.copy(alpha = 0.85f), textAlign = TextAlign.Center)
+            Spacer(Modifier.height(24.dp))
+            actions()
         }
     }
 }
