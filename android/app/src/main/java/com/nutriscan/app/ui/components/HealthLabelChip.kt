@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material.icons.rounded.Cancel
+import androidx.compose.material.icons.rounded.HelpOutline
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -19,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.nutriscan.app.ui.theme.NsAmber
+import com.nutriscan.app.ui.theme.NsCharcoal400
 import com.nutriscan.app.ui.theme.NsEmerald700
 import com.nutriscan.app.ui.theme.NsRed
 
@@ -27,6 +29,7 @@ private data class LabelStyle(val color: Color, val icon: ImageVector)
 private fun styleFor(label: String): LabelStyle = when (label) {
     "Good" -> LabelStyle(NsEmerald700, Icons.Rounded.CheckCircle)
     "Moderate" -> LabelStyle(NsAmber, Icons.Rounded.Warning)
+    "Incomplete" -> LabelStyle(NsCharcoal400, Icons.Rounded.HelpOutline)
     else -> LabelStyle(NsRed, Icons.Rounded.Cancel)
 }
 

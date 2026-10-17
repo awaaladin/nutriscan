@@ -174,7 +174,7 @@ fun HomeScreen(
                         headlineContent = { Text(scan.productName) },
                         supportingContent = { HealthLabelChip(scan.label) },
                         trailingContent = {
-                            Text("${scan.score}/10", style = MaterialTheme.typography.titleMedium)
+                            Text(if (scan.label == "Incomplete") "—" else "${scan.score}/10", style = MaterialTheme.typography.titleMedium)
                         },
                     )
                 }

@@ -65,10 +65,18 @@ def build_product_context(product, assessment: dict, score: dict, reports: List[
         f"protein {fmt(product.protein_g, ' g')}",
     ]
     if score:
-        lines += [
-            f"NutriScan health score: {score['score']}/10 ({score['label']}); diabetic risk: {score['diabetic_risk']}; "
-            f"flags: {', '.join(score['flags']) or 'none'}",
-        ]
+        if score["score"] is None:
+            lines += [
+                f"NutriScan health score: NOT AVAILABLE -- missing nutrition data ({', '.join(score.get('missing') or ['nutrition'])}). "
+                f"Do not guess a score or call it healthy. Diabetic risk: {score['diabetic_risk']}; "
+                f"flags: {', '.join(score['flags']) or 'none'}",
+            ]
+        else:
+            lines += [
+                f"NutriScan health score: {score['score']}/10 ({score['label']}); diabetic risk: {score['diabetic_risk']}; "
+                f"flags: {', '.join(score['flags']) or 'none'}"
+                + (f"; incomplete data, missing: {', '.join(score['missing'])}" if score.get("missing") else ""),
+            ]
     lines += [
         f"Authenticity evidence: {assessment['headline']} -- " + " ".join(assessment["reasons"]),
         "",

@@ -40,7 +40,7 @@ import com.nutriscan.app.ui.components.NsOutlinedButton
 import com.nutriscan.app.ui.components.NsScreenScaffold
 import com.nutriscan.app.ui.components.tierColor
 
-private enum class HistoryFilter { ALL, GOOD, MODERATE, AVOID }
+private enum class HistoryFilter { ALL, GOOD, MODERATE, AVOID, INCOMPLETE }
 
 @Composable
 fun HistoryScreen(repository: NutriScanRepository, onBack: () -> Unit, onOpenScan: (HistoryItem) -> Unit) {
@@ -64,6 +64,7 @@ fun HistoryScreen(repository: NutriScanRepository, onBack: () -> Unit, onOpenSca
             HistoryFilter.GOOD -> it.label == "Good"
             HistoryFilter.MODERATE -> it.label == "Moderate"
             HistoryFilter.AVOID -> it.label == "Avoid"
+            HistoryFilter.INCOMPLETE -> it.label == "Incomplete"
         }
     }
 
@@ -135,7 +136,7 @@ fun HistoryScreen(repository: NutriScanRepository, onBack: () -> Unit, onOpenSca
                                     }
                                 }
                             },
-                            trailingContent = { Text("${item.score}/10", style = MaterialTheme.typography.titleMedium) },
+                            trailingContent = { Text(item.score?.let { "$it/10" } ?: "—", style = MaterialTheme.typography.titleMedium) },
                         )
                         HorizontalDivider()
                     }

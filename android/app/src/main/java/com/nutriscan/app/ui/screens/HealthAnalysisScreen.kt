@@ -25,6 +25,7 @@ import com.nutriscan.app.ui.ScanUiState
 import com.nutriscan.app.ui.components.NsButton
 import com.nutriscan.app.ui.components.NsScreenScaffold
 import com.nutriscan.app.ui.theme.NsAmber
+import com.nutriscan.app.ui.theme.NsCharcoal400
 import com.nutriscan.app.ui.theme.NsEmerald500
 import com.nutriscan.app.ui.theme.NsRed
 
@@ -42,7 +43,7 @@ fun HealthAnalysisScreen(viewModel: MainViewModel, onBack: () -> Unit) {
 
     NsScreenScaffold(title = "Health analysis", onBack = onBack) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp)) {
-            if (result == null || score == null || label == null) {
+            if (result == null || label == null) {
                 Text("No analysis available.")
             } else {
                 Text(result.product.name, style = MaterialTheme.typography.headlineSmall)
@@ -51,7 +52,10 @@ fun HealthAnalysisScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     TrafficLight(label)
                     Spacer(Modifier.width(12.dp))
                     Column {
-                        Text("$score/10", style = MaterialTheme.typography.headlineMedium)
+                        Text(
+                            if (score != null) "$score/10" else "Not scored",
+                            style = MaterialTheme.typography.headlineMedium,
+                        )
                         Text(label, style = MaterialTheme.typography.titleMedium)
                     }
                 }
@@ -72,8 +76,15 @@ fun HealthAnalysisScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 }
                 if (result.insufficient_data) {
                     Spacer(Modifier.height(8.dp))
+                    val missing = result.missing_nutrients.joinToString(", ").ifBlank { "nutrition" }
                     Text(
-                        "Some nutrition data was missing for this product; score may be incomplete.",
+                        if (score == null) {
+                            "We can't score this product because its $missing information is missing. " +
+                                "Add the nutrition table from the product screen to get a score."
+                        } else {
+                            "Based on incomplete data (missing: $missing). The missing values could only " +
+                                "make this verdict worse, never better."
+                        },
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
@@ -105,6 +116,7 @@ private fun TrafficLight(label: String) {
     val color = when (label) {
         "Good" -> NsEmerald500
         "Moderate" -> NsAmber
+        "Incomplete" -> NsCharcoal400
         else -> NsRed
     }
     Box(modifier = Modifier.size(48.dp).background(color, shape = CircleShape))

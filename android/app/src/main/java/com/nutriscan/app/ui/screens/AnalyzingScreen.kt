@@ -130,7 +130,11 @@ fun AnalyzingScreen(
                     Spacer(Modifier.height(8.dp))
                     HealthLabelChip(state.cached.label)
                     Spacer(Modifier.height(8.dp))
-                    Text("${state.cached.score}/10", style = MaterialTheme.typography.headlineSmall, color = NsGold300)
+                    Text(
+                        if (state.cached.label == "Incomplete") "No score yet" else "${state.cached.score}/10",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = NsGold300,
+                    )
                     Spacer(Modifier.height(24.dp))
                     NsOutlinedButton(text = "Scan again", onClick = onRetry)
                 }

@@ -48,11 +48,41 @@ class MainViewModel(private val repository: NutriScanRepository) : ViewModel() {
     private val _photos = MutableStateFlow<List<File>>(emptyList())
     val photos: StateFlow<List<File>> = _photos
 
+    /** Set while a product's missing nutrition is being added, so a failed attempt's
+     * "Retake" / "enter manually" lead back to the completion screens rather than the
+     * new-product ones. */
+    var completingBarcode: String? = null
+        private set
+
+    /** Adds the missing nutrition of [barcode] from the photos taken so far (of the nutrition table). */
+    fun completeFromPhotos(barcode: String) = runCompletion(barcode, emptyMap(), _photos.value)
+
+    /** Adds the missing nutrition of [barcode] from values the user typed ([fields]: name -> text). */
+    fun completeWithValues(barcode: String, fields: Map<String, String>) = runCompletion(barcode, fields, emptyList())
+
+    private fun runCompletion(barcode: String, fields: Map<String, String>, files: List<File>) {
+        if (_scanState.value is ScanUiState.Loading) return
+        completingBarcode = barcode
+        viewModelScope.launch {
+            _scanState.value = ScanUiState.Loading(
+                if (files.isEmpty()) "Adding the nutrition values and re-scoring…"
+                else "Reading the nutrition table from your photo… (this can take up to 30 seconds)",
+            )
+            val outcome = repository.completeProduct(barcode, fields, files)
+            if (outcome is ScanOutcome.Success) {
+                clearPhotos()
+                completingBarcode = null
+            }
+            _scanState.value = outcome.toUiState(barcode)
+        }
+    }
+
     /** Step 1: look the barcode up in our database (and Open Food Facts). If it
      * isn't known anywhere, the state becomes [ScanUiState.NeedsPhotos] and the
      * app opens the photo screen -- no dead end, no manual form first. */
     fun onBarcodeScanned(barcode: String) {
         if (_scanState.value is ScanUiState.Loading) return
+        completingBarcode = null
         clearPhotos()
         viewModelScope.launch {
             _scanState.value = ScanUiState.Loading("Checking our database for barcode $barcode…")
@@ -66,6 +96,7 @@ class MainViewModel(private val repository: NutriScanRepository) : ViewModel() {
     /** The scanner never read a barcode (or the user chose to skip it): go
      * straight to the photo screen. The server reads the barcode off the photos. */
     fun onNoBarcode() {
+        completingBarcode = null
         clearPhotos()
         _scanState.value = ScanUiState.NeedsPhotos(null)
     }
@@ -125,6 +156,7 @@ class MainViewModel(private val repository: NutriScanRepository) : ViewModel() {
 
     fun resetScanState() {
         _scanState.value = ScanUiState.Idle
+        completingBarcode = null
         clearPhotos()
     }
 

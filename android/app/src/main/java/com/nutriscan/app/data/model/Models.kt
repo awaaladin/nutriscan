@@ -68,6 +68,8 @@ data class ScanResponse(
     val diabetic_risk: String? = null,
     val flags: List<String> = emptyList(),
     val insufficient_data: Boolean = false,
+    // Which nutrients we have no value for, e.g. ["sugar", "sodium"].
+    val missing_nutrients: List<String> = emptyList(),
     val explanation: String? = null,
     val product_type: String? = null,
     val detail: String? = null,
@@ -81,7 +83,8 @@ data class ScanRequest(val barcode: String)
 data class HistoryItem(
     val id: Int,
     val product: Product,
-    val score: Int,
+    // Null when the label is "Incomplete": there is no honest number to show.
+    val score: Int?,
     val label: String,
     val diabetic_risk: String,
     val flags: List<String>,

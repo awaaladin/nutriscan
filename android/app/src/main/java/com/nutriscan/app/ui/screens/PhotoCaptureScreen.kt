@@ -67,6 +67,15 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
+private val completeLabels = listOf(
+    "The nutrition table",
+    "The ingredient list",
+    "Another side",
+    "Another side",
+    "Another side",
+    "Another side",
+)
+
 private val sideLabels = listOf(
     "Front of the pack",
     "Back (nutrition table & NAFDAC number)",
@@ -92,7 +101,12 @@ fun PhotoCaptureScreen(
     barcode: String?,
     onBack: () -> Unit,
     onSubmit: () -> Unit,
+    // When true the screen photographs the NUTRITION TABLE of a product we already hold,
+    // to fill in missing values -- one clear photo is enough.
+    completeMode: Boolean = false,
 ) {
+    val labels = if (completeMode) completeLabels else sideLabels
+    val minPhotos = if (completeMode) 1 else MIN_PRODUCT_PHOTOS
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
@@ -157,7 +171,11 @@ fun PhotoCaptureScreen(
     }
 
     NsScreenScaffold(
-        title = if (lastFailure != null) "Retake photos" else "Photograph the product",
+        title = when {
+            completeMode -> if (lastFailure != null) "Retake the table" else "Photograph the nutrition table"
+            lastFailure != null -> "Retake photos"
+            else -> "Photograph the product"
+        },
         onBack = onBack,
     ) { padding ->
         Column(
@@ -189,12 +207,22 @@ fun PhotoCaptureScreen(
             }
 
             Text(
-                if (barcode != null) "Barcode $barcode isn't in our database yet." else "No barcode was scanned.",
+                when {
+                    completeMode -> "We're missing this product's nutrition values."
+                    barcode != null -> "Barcode $barcode isn't in our database yet."
+                    else -> "No barcode was scanned."
+                },
                 style = MaterialTheme.typography.titleSmall,
             )
             Text(
-                "Take at least $MIN_PRODUCT_PHOTOS photos, one per side. We read them together to find the product, " +
-                    "save its barcode and NAFDAC number, and check its authenticity -- once saved, scanning it again is instant.",
+                if (completeMode) {
+                    "Take one clear photo of the nutrition table, flat and in good light with the whole table in the frame " +
+                        "(add the ingredient list too if you can). We read the numbers and score the product. " +
+                        "Only missing values are filled -- nothing already on file is changed."
+                } else {
+                    "Take at least $MIN_PRODUCT_PHOTOS photos, one per side. We read them together to find the product, " +
+                        "save its barcode and NAFDAC number, and check its authenticity -- once saved, scanning it again is instant."
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -240,7 +268,7 @@ fun PhotoCaptureScreen(
                         },
                     )
                     Text(
-                        if (canTakeMore) "Next: ${sideLabels[nextIndex.coerceAtMost(sideLabels.lastIndex)]}" else "Maximum photos reached",
+                        if (canTakeMore) "Next: ${labels[nextIndex.coerceAtMost(labels.lastIndex)]}" else "Maximum photos reached",
                         color = Color.White,
                         style = MaterialTheme.typography.labelLarge,
                         modifier = Modifier
@@ -259,8 +287,8 @@ fun PhotoCaptureScreen(
                 NsButton(
                     text = when {
                         busy -> "Saving photo…"
-                        retakeIndex != null -> "Retake: ${sideLabels[retakeIndex!!.coerceAtMost(sideLabels.lastIndex)]}"
-                        else -> "Take photo (${photos.size}/$MIN_PRODUCT_PHOTOS)"
+                        retakeIndex != null -> "Retake: ${labels[retakeIndex!!.coerceAtMost(labels.lastIndex)]}"
+                        else -> "Take photo (${photos.size}/$minPhotos)"
                     },
                     enabled = !busy && canTakeMore && imageCapture != null,
                     onClick = { takePhoto() },
@@ -286,7 +314,7 @@ fun PhotoCaptureScreen(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             AsyncImage(
                                 model = file,
-                                contentDescription = sideLabels[index.coerceAtMost(sideLabels.lastIndex)],
+                                contentDescription = labels[index.coerceAtMost(labels.lastIndex)],
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier
                                     .size(92.dp)
@@ -299,7 +327,7 @@ fun PhotoCaptureScreen(
                                         RoundedCornerShape(12.dp),
                                     ),
                             )
-                            Text("${index + 1}. " + sideLabels[index.coerceAtMost(sideLabels.lastIndex)].substringBefore(" ("), style = MaterialTheme.typography.labelSmall)
+                            Text("${index + 1}. " + labels[index.coerceAtMost(labels.lastIndex)].substringBefore(" ("), style = MaterialTheme.typography.labelSmall)
                             Row {
                                 TextButton(onClick = { retakeIndex = if (retakeIndex == index) null else index }) {
                                     Text(if (retakeIndex == index) "Cancel" else "Retake", style = MaterialTheme.typography.labelSmall)
@@ -317,21 +345,31 @@ fun PhotoCaptureScreen(
             }
 
             Spacer(Modifier.height(12.dp))
-            OutlinedTextField(
-                value = nafdac,
-                onValueChange = { nafdac = it },
-                label = { Text("NAFDAC number (optional, e.g. A4-1234)") },
-                supportingText = { Text("If we already know this number, we skip the AI and answer instantly.") },
-                modifier = Modifier.fillMaxWidth(),
-            )
+            if (!completeMode) {
+                OutlinedTextField(
+                    value = nafdac,
+                    onValueChange = { nafdac = it },
+                    label = { Text("NAFDAC number (optional, e.g. A4-1234)") },
+                    supportingText = { Text("If we already know this number, we skip the AI and answer instantly.") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
 
             Spacer(Modifier.height(12.dp))
-            val missing = MIN_PRODUCT_PHOTOS - photos.size
+            val missing = minPhotos - photos.size
             NsButton(
-                text = if (missing > 0) "Take $missing more photo${if (missing == 1) "" else "s"} to continue" else "Research this product",
+                text = when {
+                    missing > 0 -> "Take $missing more photo${if (missing == 1) "" else "s"} to continue"
+                    completeMode -> "Read the nutrition table"
+                    else -> "Research this product"
+                },
                 enabled = missing <= 0 && !busy,
                 onClick = {
-                    viewModel.researchFromPhotos(barcode, nafdac.trim().ifBlank { null })
+                    if (completeMode) {
+                        barcode?.let { viewModel.completeFromPhotos(it) }
+                    } else {
+                        viewModel.researchFromPhotos(barcode, nafdac.trim().ifBlank { null })
+                    }
                     onSubmit()
                 },
                 modifier = Modifier.fillMaxWidth(),

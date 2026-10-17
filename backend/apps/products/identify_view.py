@@ -20,7 +20,7 @@ from .identify_helpers import (
 )
 from .models import Product
 from .serializers import ProductSerializer
-from .views import _get_or_create_explanation, _non_food_message, _nutrition_from_product
+from .views import _get_or_create_explanation, _non_food_message, _nutrition_from_product, missing_names
 
 
 def scored_response(request, product: Product, *, source: str, notice: str = "") -> Response:
@@ -44,7 +44,7 @@ def scored_response(request, product: Product, *, source: str, notice: str = "")
     scan = Scan.objects.create(
         user=request.user,
         product=product,
-        score=health_result.score,
+        score=health_result.score or 0,  # 0 = no score (label "Incomplete")
         label=health_result.label.value,
         diabetic_risk=health_result.diabetic_risk.value,
         flags=health_result.flags,
@@ -63,6 +63,7 @@ def scored_response(request, product: Product, *, source: str, notice: str = "")
             "diabetic_risk": health_result.diabetic_risk.value,
             "flags": health_result.flags,
             "insufficient_data": health_result.insufficient_data,
+            "missing_nutrients": missing_names(health_result),
             "is_estimated": product.is_estimated,
             "source": source,
             "explanation": explanation,

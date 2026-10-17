@@ -34,6 +34,16 @@ sealed class Destination(val route: String) {
         fun build(barcode: String) = "report/$barcode"
     }
 
+    /** Photograph the nutrition table of a product we already hold, to complete it. */
+    data object CaptureNutrition : Destination("capture-nutrition/{barcode}") {
+        fun build(barcode: String) = "capture-nutrition/$barcode"
+    }
+
+    /** Type in a product's missing nutrition values. */
+    data object NutritionEntry : Destination("nutrition/{barcode}") {
+        fun build(barcode: String) = "nutrition/$barcode"
+    }
+
     data object Ask : Destination("ask/{barcode}") {
         fun build(barcode: String) = "ask/$barcode"
     }

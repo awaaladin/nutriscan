@@ -16,7 +16,7 @@ from apps.integrations.product_qa import (
 from apps.scoring.engine import compute_health_score
 
 from .barcodes import find_product_by_barcode
-from .views import _nutrition_from_product
+from .views import _nutrition_from_product, missing_names
 
 MAX_REPORTS_IN_CONTEXT = 5
 
@@ -59,6 +59,7 @@ class ProductAskView(APIView):
                 "label": result.label.value,
                 "diabetic_risk": result.diabetic_risk.value,
                 "flags": result.flags,
+                "missing": missing_names(result),
             }
         reports = [
             {"verdict": r.verdict, "where": r.where_bought, "comment": (r.comment or "")[:200]}

@@ -94,7 +94,7 @@ class NutriScanRepository(
                             barcode = barcode,
                             productName = body.product.name,
                             brand = body.product.brand,
-                            score = requireNotNull(body.score),
+                            score = body.score ?: 0, // 0 = no score (label "Incomplete")
                             label = requireNotNull(body.label),
                             diabeticRisk = requireNotNull(body.diabetic_risk),
                             explanation = body.explanation.orEmpty(),
@@ -132,7 +132,7 @@ class NutriScanRepository(
                 val body = requireNotNull(response.body())
                 if (body.product_type != null && body.product_type != "food") {
                     ScanOutcome.NonFood(body.product.name, body.detail.orEmpty())
-                } else if (body.score != null && body.label != null && body.diabetic_risk != null) {
+                } else if (body.label != null && body.diabetic_risk != null) {
                     // body.product.barcode is the one actually stored server-side --
                     // when [barcode] was null, that's what the AI read or a synthetic one.
                     cachedScanDao.upsert(
@@ -140,7 +140,7 @@ class NutriScanRepository(
                             barcode = body.product.barcode,
                             productName = body.product.name,
                             brand = body.product.brand,
-                            score = body.score,
+                            score = body.score ?: 0,
                             label = body.label,
                             diabeticRisk = body.diabetic_risk,
                             explanation = body.explanation.orEmpty(),
@@ -175,6 +175,49 @@ class NutriScanRepository(
         )
     } catch (e: IOException) {
         ScanOutcome.Error("No connection: the photos couldn't be sent. Check your internet and try again.")
+    }
+
+    /** Completes a product whose nutrition data is missing so it can be scored: from a
+     * photo of the nutrition table, typed [fields] (field name -> text, e.g. "sugar_g"),
+     * or both. The server only fills blanks, so nothing already on file is changed. */
+    suspend fun completeProduct(barcode: String, fields: Map<String, String>, photos: List<File>): ScanOutcome = try {
+        val textParts = fields.filterValues { it.isNotBlank() }
+            .mapValues { it.value.toRequestBody("text/plain".toMediaType()) }
+        val imageParts = photos.map {
+            MultipartBody.Part.createFormData("images", it.name, it.asRequestBody("image/jpeg".toMediaType()))
+        }
+        val response = api.completeProduct(barcode, textParts, imageParts)
+        if (response.isSuccessful) {
+            val body = requireNotNull(response.body())
+            if (body.label != null && body.diabetic_risk != null) {
+                cachedScanDao.upsert(
+                    CachedScanEntity(
+                        barcode = body.product.barcode,
+                        productName = body.product.name,
+                        brand = body.product.brand,
+                        score = body.score ?: 0,
+                        label = body.label,
+                        diabeticRisk = body.diabetic_risk,
+                        explanation = body.explanation.orEmpty(),
+                        scannedAtEpochMs = System.currentTimeMillis(),
+                    ),
+                )
+                ScanOutcome.Success(body)
+            } else {
+                ScanOutcome.IdentifyFailed(barcode, "The server returned an incomplete result. Please try again.", retake = false)
+            }
+        } else {
+            val error = parseServerError(response) // read once: the body can't be re-read
+            ScanOutcome.IdentifyFailed(
+                barcode,
+                describeFailure(response.code(), error),
+                retake = error?.retake ?: false,
+            )
+        }
+    } catch (e: SocketTimeoutException) {
+        ScanOutcome.IdentifyFailed(barcode, "The server is taking too long. Please try again.", retake = false)
+    } catch (e: IOException) {
+        ScanOutcome.Error("No connection: check your internet and try again.")
     }
 
     suspend fun reports(barcode: String): Result<ReportsResponse> = runCatching {

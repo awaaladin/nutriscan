@@ -43,7 +43,29 @@ def _non_food_message(product: Product) -> str:
     return f"{product.name} doesn't look like a packaged food, so a WHO health score doesn't apply here."
 
 
+MISSING_NAMES = {"sugar": "sugar", "saturated_fat": "saturated fat", "sodium": "sodium"}
+
+
+def missing_names(result: HealthScoreResult) -> list:
+    """Human names of the nutrients we have no value for."""
+    return [MISSING_NAMES[key] for key in result.missing if key in MISSING_NAMES]
+
+
+def _incomplete_explanation(product: Product, result: HealthScoreResult) -> str:
+    """No score to explain, so no AI call and nothing to cache -- just say what's missing."""
+    missing = ", ".join(missing_names(result)) or "nutrition"
+    text = (
+        f"We can't give {product.name} a health score yet because its {missing} "
+        "information is missing. Add the nutrition table to get one."
+    )
+    if "likely_high_sugar" in result.flags:
+        text += " Sugar is one of the first ingredients, so it is likely high in sugar."
+    return text + f" Diabetic risk: {result.diabetic_risk.value}. This is educational information, not medical advice."
+
+
 def _get_or_create_explanation(product: Product, result: HealthScoreResult) -> str:
+    if result.score is None:
+        return _incomplete_explanation(product, result)
     cached = CachedExplanation.objects.filter(
         product=product,
         score=result.score,
@@ -112,7 +134,7 @@ class ScanView(APIView):
         scan = Scan.objects.create(
             user=request.user,
             product=product,
-            score=result.score,
+            score=result.score or 0,  # 0 = no score (label "Incomplete"); real scores are 1-10
             label=result.label.value,
             diabetic_risk=result.diabetic_risk.value,
             flags=result.flags,
@@ -127,6 +149,7 @@ class ScanView(APIView):
                 "diabetic_risk": result.diabetic_risk.value,
                 "flags": result.flags,
                 "insufficient_data": result.insufficient_data,
+                "missing_nutrients": missing_names(result),
                 "is_estimated": product.is_estimated,
                 "source": "database",
                 "explanation": explanation,
@@ -209,5 +232,6 @@ class AnalyzeView(APIView):
                 "diabetic_risk": result.diabetic_risk.value,
                 "flags": result.flags,
                 "insufficient_data": result.insufficient_data,
+                "missing_nutrients": missing_names(result),
             }
         )

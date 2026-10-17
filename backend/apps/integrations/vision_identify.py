@@ -246,3 +246,73 @@ def _http_error(response) -> IdentifyError:
             retake=True,
         )
     return IdentifyError("ai_error", f"The AI service returned an error ({status}). Please try again shortly.")
+
+
+NUTRITION_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "found": {"type": "boolean"},
+        "calories_kcal": {"type": "number", "nullable": True},
+        "sugar_g": {"type": "number", "nullable": True},
+        "saturated_fat_g": {"type": "number", "nullable": True},
+        "sodium_mg": {"type": "number", "nullable": True},
+        "carbohydrates_g": {"type": "number", "nullable": True},
+        "fiber_g": {"type": "number", "nullable": True},
+        "protein_g": {"type": "number", "nullable": True},
+        "ingredients_text": {"type": "string", "nullable": True},
+        "nafdac_number": {"type": "string", "nullable": True},
+    },
+    "required": ["found"],
+}
+
+NUTRITION_PROMPT = """These photos show the nutrition facts table and/or ingredient list of ONE packaged product.
+Read the values exactly as printed.
+
+Rules:
+- Set found=false if there is no readable nutrition table in any photo.
+- Report values per 100g or 100ml. If the table only gives per-serving values, convert them using
+  the serving size printed on the pack. If you cannot do the conversion reliably, use null.
+- sodium_mg must be in milligrams (if the label shows salt, convert: sodium = salt / 2.5; if it shows
+  sodium in grams, multiply by 1000).
+- Use null for any value you cannot actually read. Never guess or invent a number.
+- Transcribe the ingredient list in the order printed (comma separated) into ingredients_text, or null.
+- If a NAFDAC registration number is visible (formats like "A4-1234"), put it in nafdac_number, else null.
+"""
+
+
+def extract_nutrition_from_images(images: List[Tuple[bytes, str]]) -> dict:
+    """Reads just the nutrition table / ingredients from photos, to complete a
+    product whose data is missing. Raises IdentifyError with a specific reason."""
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        raise IdentifyError(
+            "ai_not_configured",
+            "AI photo reading isn't set up on the server yet. You can type the values in instead.",
+        )
+    parts = [{"text": NUTRITION_PROMPT}] + [
+        {"inline_data": {"mime_type": mime, "data": base64.b64encode(data).decode("ascii")}}
+        for data, mime in images
+    ]
+    payload = {
+        "contents": [{"parts": parts}],
+        "generationConfig": {"responseMimeType": "application/json", "responseSchema": NUTRITION_SCHEMA},
+    }
+    response = post_with_model_fallback(api_key, payload)
+    if response.status_code != 200:
+        raise _http_error(response)
+    try:
+        result = json.loads(response.json()["candidates"][0]["content"]["parts"][0]["text"])
+    except (KeyError, IndexError, ValueError, TypeError):
+        raise IdentifyError(
+            "ai_bad_response",
+            "The AI couldn't read that photo. Retake it flat, in good light, filling the frame.",
+            retake=True,
+        )
+    if not result.get("found"):
+        raise IdentifyError(
+            "no_nutrition_found",
+            "No readable nutrition table in that photo. Retake it flat, in good light, with the whole "
+            "table filling the frame -- or type the values in instead.",
+            retake=True,
+        )
+    return result

@@ -44,6 +44,7 @@ import com.nutriscan.app.ui.screens.HistoryScreen
 import com.nutriscan.app.ui.screens.HomeScreen
 import com.nutriscan.app.ui.screens.InsightsScreen
 import com.nutriscan.app.ui.screens.LoginScreen
+import com.nutriscan.app.ui.screens.NutritionEntryScreen
 import com.nutriscan.app.ui.screens.OnboardingScreen
 import com.nutriscan.app.ui.screens.PhotoCaptureScreen
 import com.nutriscan.app.ui.screens.ProInsightsScreen
@@ -193,13 +194,19 @@ fun NutriScanApp() {
                     },
                     // A failed attempt reopens the photo screen with the earlier photos kept.
                     onRetakePhotos = { barcode ->
-                        navController.navigate(Destination.Capture.build(barcode)) {
+                        val completing = mainViewModel.completingBarcode
+                        val target = if (completing != null) Destination.CaptureNutrition.build(completing) else Destination.Capture.build(barcode)
+                        navController.navigate(target) {
                             popUpTo(Destination.Analyzing.route) { inclusive = true }
                         }
                     },
                     onManualEntry = { barcode ->
-                        navController.navigate(Destination.SubmitProduct.build(barcode)) {
-                            popUpTo(Destination.Home.route)
+                        val completing = mainViewModel.completingBarcode
+                        val target = if (completing != null) Destination.NutritionEntry.build(completing) else Destination.SubmitProduct.build(barcode)
+                        navController.navigate(target) {
+                            popUpTo(if (completing != null) Destination.Analyzing.route else Destination.Home.route) {
+                                inclusive = completing != null
+                            }
                         }
                     },
                     onRetry = { navController.popBackStack(Destination.Scanner.route, inclusive = false) },
@@ -218,6 +225,33 @@ fun NutriScanApp() {
                     },
                 )
             }
+            animatedComposable(Destination.CaptureNutrition.route) { backStackEntry ->
+                val barcode = backStackEntry.arguments?.getString("barcode").orEmpty()
+                PhotoCaptureScreen(
+                    viewModel = mainViewModel,
+                    barcode = barcode,
+                    completeMode = true,
+                    onBack = { navController.popBackStack() },
+                    onSubmit = {
+                        navController.navigate(Destination.Analyzing.route) {
+                            popUpTo(Destination.CaptureNutrition.route) { inclusive = true }
+                        }
+                    },
+                )
+            }
+            animatedComposable(Destination.NutritionEntry.route) { backStackEntry ->
+                val barcode = backStackEntry.arguments?.getString("barcode").orEmpty()
+                NutritionEntryScreen(
+                    viewModel = mainViewModel,
+                    barcode = barcode,
+                    onBack = { navController.popBackStack() },
+                    onSubmit = {
+                        navController.navigate(Destination.Analyzing.route) {
+                            popUpTo(Destination.NutritionEntry.route) { inclusive = true }
+                        }
+                    },
+                )
+            }
             animatedComposable(Destination.ProductDetail.route) {
                 ProductDetailScreen(
                     viewModel = mainViewModel,
@@ -225,6 +259,8 @@ fun NutriScanApp() {
                     preferences = preferences,
                     onBack = { navController.popBackStack() },
                     onAsk = { barcode -> navController.navigate(Destination.Ask.build(barcode)) },
+                    onPhotographTable = { barcode -> navController.navigate(Destination.CaptureNutrition.build(barcode)) },
+                    onTypeValues = { barcode -> navController.navigate(Destination.NutritionEntry.build(barcode)) },
                     onOpenReports = { barcode -> navController.navigate(Destination.Reports.build(barcode)) },
                     onViewAnalysis = {
                         val currentState = mainViewModel.scanState.value

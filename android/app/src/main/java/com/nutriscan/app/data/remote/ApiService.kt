@@ -29,6 +29,7 @@ import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Part
+import retrofit2.http.PartMap
 import retrofit2.http.Path
 
 interface ApiService {
@@ -73,6 +74,15 @@ interface ApiService {
         @Part("nafdac_number") nafdacNumber: RequestBody,
         @Part photos: List<MultipartBody.Part>,
     ): Response<SubmitReportResponse>
+
+    /** Fills a product's missing nutrition from a photo of the table and/or typed values. */
+    @Multipart
+    @POST("api/products/{barcode}/complete/")
+    suspend fun completeProduct(
+        @Path("barcode") barcode: String,
+        @PartMap fields: Map<String, @JvmSuppressWildcards RequestBody>,
+        @Part images: List<MultipartBody.Part>,
+    ): Response<ScanResponse>
 
     @POST("api/products/{barcode}/ask/")
     suspend fun askAboutProduct(@Path("barcode") barcode: String, @Body request: AskRequest): Response<AskResponse>

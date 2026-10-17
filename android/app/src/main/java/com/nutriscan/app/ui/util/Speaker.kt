@@ -141,6 +141,13 @@ fun spokenSummary(result: ScanResponse): String {
     parts += product.name + (product.brand?.takeIf { it.isNotBlank() }?.let { " by $it" } ?: "") + "."
     if (result.score != null && result.label != null) {
         parts += "Health score ${result.score} out of 10, rated ${result.label}."
+        if (result.insufficient_data) {
+            parts += "This is based on incomplete data, missing ${result.missing_nutrients.joinToString(", ")}, " +
+                "so the real result could only be worse."
+        }
+    } else if (result.label == "Incomplete") {
+        parts += "There is no health score yet because the " +
+            (result.missing_nutrients.joinToString(", ").ifBlank { "nutrition" }) + " information is missing."
     }
     result.diabetic_risk?.let { parts += "Diabetic risk: $it." }
     val concerns = result.flags.map { it.replace('_', ' ') }

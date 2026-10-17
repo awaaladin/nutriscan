@@ -11,3 +11,9 @@ class ScanSerializer(serializers.ModelSerializer):
     class Meta:
         model = Scan
         fields = ["id", "product", "score", "label", "diabetic_risk", "flags", "scanned_at"]
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if instance.label == "Incomplete":
+            data["score"] = None  # stored as 0; there is no honest number to show
+        return data

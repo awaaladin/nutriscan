@@ -70,6 +70,8 @@ fun ProductDetailScreen(
     onViewAnalysis: () -> Unit,
     onOpenReports: (barcode: String) -> Unit,
     onAsk: (barcode: String) -> Unit,
+    onPhotographTable: (barcode: String) -> Unit,
+    onTypeValues: (barcode: String) -> Unit,
 ) {
     val scanState by viewModel.scanState.collectAsState()
     val result = (scanState as? ScanUiState.Success)?.result
@@ -114,12 +116,26 @@ fun ProductDetailScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     HealthLabelChip(result.label)
                     Spacer(Modifier.width(10.dp))
-                    result.score?.let { Text("$it/10", style = MaterialTheme.typography.titleMedium) }
+                    if (result.score != null) {
+                        Text("${result.score}/10", style = MaterialTheme.typography.titleMedium)
+                    } else {
+                        Text("No score yet", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                     result.diabetic_risk?.let {
                         Spacer(Modifier.width(10.dp))
                         Text("Diabetic risk: $it", style = MaterialTheme.typography.bodyMedium)
                     }
                 }
+            }
+
+            // --- Missing data: say so, and offer the way to fix it ------------------------------
+            if (result.insufficient_data) {
+                Spacer(Modifier.height(12.dp))
+                IncompleteDataCard(
+                    result = result,
+                    onPhotographTable = { onPhotographTable(product.barcode) },
+                    onTypeValues = { onTypeValues(product.barcode) },
+                )
             }
 
             // --- Read aloud / ask -------------------------------------------------
@@ -231,6 +247,49 @@ fun ProductDetailScreen(
             Spacer(Modifier.height(24.dp))
             NsButton(text = "View health analysis", onClick = onViewAnalysis, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(24.dp))
+        }
+    }
+}
+
+/** Shown whenever nutrition values are missing. With no numbers at all there is no
+ * score (a green 10/10 would be a guess); with some missing, the verdict is only a
+ * floor. Either way the fix is one tap: photograph the table or type the values. */
+@Composable
+private fun IncompleteDataCard(result: ScanResponse, onPhotographTable: () -> Unit, onTypeValues: () -> Unit) {
+    val missing = result.missing_nutrients.joinToString(", ").ifBlank { "nutrition" }
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = NsAmber.copy(alpha = 0.15f)),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                if (result.score == null) "Not enough data to score this product" else "Score based on incomplete data",
+                style = MaterialTheme.typography.titleSmall,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                if (result.score == null) {
+                    "We don't have this product's $missing information, so we won't guess a score. " +
+                        "Add the nutrition table to get a real one."
+                } else {
+                    "Missing: $missing. Those values could only make this verdict worse, never better."
+                },
+                style = MaterialTheme.typography.bodySmall,
+            )
+            if ("likely_high_sugar" in result.flags) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Sugar is one of the first ingredients, so it is probably high in sugar.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = NsRed,
+                )
+            }
+            Spacer(Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                NsButton(text = "Photograph the table", onClick = onPhotographTable, modifier = Modifier.weight(1f))
+                NsOutlinedButton(text = "Type the values", onClick = onTypeValues, modifier = Modifier.weight(1f))
+            }
         }
     }
 }
