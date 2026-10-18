@@ -98,6 +98,8 @@ p { margin: 0 0 1em; }
 .split { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; }
 .split.flip > :first-child { order: 2; }
 .split .phone { width: min(290px, 100%); margin-inline: auto; display: block; filter: drop-shadow(0 24px 36px rgba(11, 46, 34, .28)); }
+.split > *, .hero .grid > *, .grid-2 > *, .grid-3 > *, .grid-4 > * { min-width: 0; }
+pre { max-width: 100%; }
 .split figure { margin: 0; }
 figcaption { font-size: .82rem; color: var(--muted); text-align: center; margin-top: 14px; }
 .dark figcaption { color: rgba(247, 246, 242, .55); }

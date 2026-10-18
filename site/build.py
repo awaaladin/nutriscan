@@ -52,14 +52,14 @@ HEAD_SCRIPT = ('<script>(function(){var d=document.documentElement;d.className+=
 
 def header(slug):
     links = "".join(
-        f'<a href="{s}.html"{" aria-current=\"page\"" if s == slug else ""}>{label}</a>' if s != "index"
+        f'<a href="{s}"{" aria-current=\"page\"" if s == slug else ""}>{label}</a>' if s != "index"
         else f'<a href="./"{" aria-current=\"page\"" if slug == "index" else ""}>{label}</a>'
         for s, label in NAV)
     return f'''<a class="skip" href="#main">Skip to content</a>
 <header class="site-header"><div class="container nav">
   <a class="brand" href="./" aria-label="NutriScan home"><img src="logo.svg" alt="" width="34" height="34"><span class="wm">Nutri<span>Scan</span></span></a>
   <button class="menu-btn" aria-label="Menu" aria-expanded="false" aria-controls="nav-links"><span></span><span></span><span></span></button>
-  <nav class="nav-links" id="nav-links" aria-label="Main">{links}<a class="btn btn-gold btn-sm" href="download.html">Download</a></nav>
+  <nav class="nav-links" id="nav-links" aria-label="Main">{links}<a class="btn btn-gold btn-sm" href="download">Download</a></nav>
 </div></header>'''
 
 
@@ -78,9 +78,15 @@ FOOTER = '''<footer class="site-footer"><div class="container">
 </div></footer>'''
 
 
+def clean(html):
+    """Links between pages use clean addresses (/features, not /features.html); Vercel serves
+    them via cleanUrls in download/vercel.json and redirects any old .html link."""
+    return re.sub(r'href="([a-z-]+)\.html', r'href="', html)
+
+
 def page(slug, title, desc, body):
     full_title = "NutriScan: Know what you eat" if slug == "index" else f"{title} · NutriScan"
-    url = SITE + ("/" if slug == "index" else f"/{slug}.html")
+    url = SITE + ("/" if slug == "index" else f"/{slug}")
     return f'''<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -137,9 +143,9 @@ def main():
         title, desc = m.group(1).strip(), m.group(2).strip()
         body = src[m.end():].replace("{{CONTACT_BLOCK}}", contact_block())
         with open(os.path.join(OUT, f"{slug}.html"), "w", encoding="utf-8", newline="\n") as f:
-            f.write(page(slug, title, desc, body))
+            f.write(clean(page(slug, title, desc, body)))
         slugs.append(slug)
-    urls = "".join(f"<url><loc>{SITE}{'/' if s == 'index' else f'/{s}.html'}</loc></url>" for s in slugs)
+    urls = "".join(f"<url><loc>{SITE}{'/' if s == 'index' else f'/{s}'}</loc></url>" for s in slugs)
     with open(os.path.join(OUT, "sitemap.xml"), "w", encoding="utf-8") as f:
         f.write(f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{urls}</urlset>')
     with open(os.path.join(OUT, "robots.txt"), "w", encoding="utf-8") as f:
