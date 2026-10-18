@@ -30,4 +30,10 @@ interface CachedScanDao {
 
     @Query("SELECT * FROM cached_scans WHERE barcode = :barcode LIMIT 1")
     suspend fun getByBarcode(barcode: String): CachedScanEntity?
+
+    @Query("DELETE FROM cached_scans WHERE barcode = :barcode")
+    suspend fun deleteByBarcode(barcode: String)
+
+    @Query("DELETE FROM cached_scans")
+    suspend fun deleteAll()
 }

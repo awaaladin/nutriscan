@@ -17,7 +17,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -51,6 +57,9 @@ fun HistoryScreen(repository: NutriScanRepository, onBack: () -> Unit, onOpenSca
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var filter by remember { mutableStateOf(HistoryFilter.ALL) }
     var retryTick by remember { mutableIntStateOf(0) }
+    var confirmClear by remember { mutableStateOf(false) }
+    var note by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(retryTick) {
         isLoading = true
@@ -70,8 +79,36 @@ fun HistoryScreen(repository: NutriScanRepository, onBack: () -> Unit, onOpenSca
         }
     }
 
+    if (confirmClear) {
+        AlertDialog(
+            onDismissRequest = { confirmClear = false },
+            title = { Text("Clear your scan history?") },
+            text = {
+                Text(
+                    "This frees up space and removes your list of scanned products. The product information " +
+                        "stays in NutriScan, so nothing we've learned is lost and other people still benefit.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmClear = false
+                    scope.launch {
+                        repository.clearHistory()
+                            .onSuccess { items = emptyList(); note = "History cleared." }
+                            .onFailure { note = it.message ?: "Couldn't clear your history." }
+                    }
+                }) { Text("Clear all") }
+            },
+            dismissButton = { TextButton(onClick = { confirmClear = false }) { Text("Cancel") } },
+        )
+    }
+
     NsScreenScaffold(title = "History", onBack = onBack) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
+            if (items.isNotEmpty()) {
+                TextButton(onClick = { confirmClear = true }) { Text("Clear all history") }
+            }
+            note?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             Row(modifier = Modifier.horizontalScroll(rememberScrollState())) {
                 HistoryFilter.entries.forEach { option ->
                     FilterChip(
@@ -138,7 +175,18 @@ fun HistoryScreen(repository: NutriScanRepository, onBack: () -> Unit, onOpenSca
                                     }
                                 }
                             },
-                            trailingContent = { Text(item.score?.let { "$it/10" } ?: "—", style = MaterialTheme.typography.titleMedium) },
+                            trailingContent = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(item.score?.let { "$it/10" } ?: "—", style = MaterialTheme.typography.titleMedium)
+                                    IconButton(onClick = {
+                                        scope.launch {
+                                            repository.deleteScan(item)
+                                                .onSuccess { items = items.filter { x -> x.id != item.id }; note = "Removed from your history. The product stays in NutriScan." }
+                                                .onFailure { note = it.message ?: "Couldn't remove that scan." }
+                                        }
+                                    }) { Icon(Icons.Outlined.DeleteOutline, contentDescription = "Remove from history") }
+                                }
+                            },
                         )
                         HorizontalDivider()
                     }

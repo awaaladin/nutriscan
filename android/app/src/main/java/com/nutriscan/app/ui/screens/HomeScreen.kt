@@ -19,6 +19,7 @@ import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.QuestionAnswer
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.rounded.QrCodeScanner
 import androidx.compose.material3.Card
@@ -70,6 +71,9 @@ fun HomeScreen(
             TopAppBar(
                 title = { LogoLockup() },
                 actions = {
+                    IconButton(onClick = onOpenSearch) {
+                        Icon(Icons.Outlined.Search, contentDescription = "Search products")
+                    }
                     IconButton(onClick = onOpenInsights) {
                         Icon(Icons.Outlined.Notifications, contentDescription = "Insights")
                     }
@@ -153,18 +157,6 @@ fun HomeScreen(
                     }
                 }
                 Spacer(Modifier.height(16.dp))
-                NsOutlinedButton(
-                    text = "Search our product database",
-                    onClick = onOpenSearch,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Spacer(Modifier.height(8.dp))
-                NsOutlinedButton(
-                    text = "Ask NutriScan about food or medicine",
-                    onClick = onOpenAssistant,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Spacer(Modifier.height(8.dp))
                 NsOutlinedButton(
                     text = "Fake product alerts",
                     onClick = onOpenAlerts,

@@ -381,6 +381,20 @@ class NutriScanRepository(
         requireNotNull(response.body())
     }
 
+    /** Removes one scan from the user's history and the copy kept on this phone. Only their
+     * record goes: the product and what we learned about it stay in the NutriScan data set. */
+    suspend fun deleteScan(item: HistoryItem): Result<Unit> = runCatching {
+        val response = api.deleteScan(item.id)
+        if (!response.isSuccessful && response.code() != 404) error(friendlyErrorMessage(response.code()))
+        cachedScanDao.deleteByBarcode(item.product.barcode)
+    }
+
+    suspend fun clearHistory(): Result<Unit> = runCatching {
+        val response = api.clearHistory()
+        if (!response.isSuccessful) error(friendlyErrorMessage(response.code()))
+        cachedScanDao.deleteAll()
+    }
+
     suspend fun getPreferences(): Result<UserPreferences> = runCatching {
         val response = api.getPreferences()
         if (!response.isSuccessful) error(friendlyErrorMessage(response.code()))

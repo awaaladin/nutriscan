@@ -23,7 +23,7 @@ from apps.products.views import (
     ProductSubmissionView,
     ScanView,
 )
-from apps.scans.views import HistoryListView
+from apps.scans.views import HistoryDetailView, HistoryListView
 from apps.subscriptions.views import ProInsightsView, VerifySubscriptionView
 from apps.users.views import PreferencesView, RegisterView
 
@@ -52,6 +52,7 @@ urlpatterns = [
     path("api/reports/<int:report_id>/flag/", ReportFlagView.as_view(), name="report-flag"),
     path("api/analyze/", AnalyzeView.as_view(), name="analyze"),
     path("api/history/", HistoryListView.as_view(), name="history"),
+    path("api/history/<int:pk>/", HistoryDetailView.as_view(), name="history-detail"),
     path("api/user/preferences/", PreferencesView.as_view(), name="preferences"),
     path("api/subscription/verify/", VerifySubscriptionView.as_view(), name="subscription-verify"),
     path("api/pro/insights/", ProInsightsView.as_view(), name="pro-insights"),

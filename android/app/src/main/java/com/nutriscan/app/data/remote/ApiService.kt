@@ -150,6 +150,12 @@ interface ApiService {
     @GET("api/history/")
     suspend fun getHistory(): Response<List<HistoryItem>>
 
+    @DELETE("api/history/{id}/")
+    suspend fun deleteScan(@Path("id") id: Int): Response<Unit>
+
+    @DELETE("api/history/")
+    suspend fun clearHistory(): Response<Unit>
+
     @GET("api/user/preferences/")
     suspend fun getPreferences(): Response<UserPreferences>
 

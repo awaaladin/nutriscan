@@ -39,9 +39,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.nutriscan.app.ui.components.LogoMark
-import com.nutriscan.app.ui.components.NutriScanWordmark
 import com.nutriscan.app.ui.components.AnimatedGradientBackground
 import com.nutriscan.app.ui.theme.NsCream
 import com.nutriscan.app.ui.theme.NsEmerald900
@@ -98,12 +95,24 @@ fun SplashScreen(onFinished: () -> Unit) {
                         .alpha(ringAlpha)
                         .background(NsGold300, CircleShape),
                 )
-                LogoMark(
-                    size = 120.dp,
+                Box(
                     modifier = Modifier
+                        .size(96.dp)
                         .scale(logoScale.value)
-                        .alpha(logoAlpha.value),
-                )
+                        .alpha(logoAlpha.value)
+                        .background(
+                            Brush.linearGradient(listOf(NsGold300, Color(0xFFB8860B))),
+                            CircleShape,
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.QrCodeScanner,
+                        contentDescription = null,
+                        tint = NsEmerald900,
+                        modifier = Modifier.size(48.dp),
+                    )
+                }
             }
             Spacer(Modifier.height(28.dp))
             AnimatedVisibility(
@@ -112,7 +121,11 @@ fun SplashScreen(onFinished: () -> Unit) {
                 exit = fadeOut(),
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    NutriScanWordmark(fontSize = 34.sp, nutriColor = NsCream)
+                    Text(
+                        "NutriScan",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = NsCream,
+                    )
                     Spacer(Modifier.height(6.dp))
                     Text(
                         "Know what you eat",
