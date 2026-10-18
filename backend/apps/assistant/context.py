@@ -15,7 +15,7 @@ from apps.community.services import integrity_dict
 from apps.products.barcodes import find_product_by_barcode
 from apps.products.models import Product
 from apps.scans.models import Scan
-from apps.scoring.engine import NutritionFacts, compute_health_score
+from apps.products.scoring_helpers import for_you, score_product
 
 from .prompts import NO_DATA_LINE
 
@@ -51,26 +51,27 @@ def _words(text: str) -> set:
     return {w for w in re.findall(r"[a-z0-9]+", (text or "").lower()) if len(w) >= 4 and w not in _STOP}
 
 
-def _facts(product: Product) -> NutritionFacts:
-    return NutritionFacts(
-        calories_kcal=product.calories_kcal, sugar_g=product.sugar_g, saturated_fat_g=product.saturated_fat_g,
-        sodium_mg=product.sodium_mg, carbohydrates_g=product.carbohydrates_g, fiber_g=product.fiber_g,
-        protein_g=product.protein_g,
-    )
-
-
 def _verdict(product: Product) -> str:
     if product.product_type != "food":
         return f"{product.product_type} (not scored)"
-    result = compute_health_score(_facts(product), product.ingredients_text)
+    result = score_product(product)
     score = f"{result.score}/10" if result.score is not None else "no score (nutrition data missing)"
     flags = f"; flags: {', '.join(result.flags)}" if result.flags else ""
     return f"{result.label.value}, {score}; diabetic risk {result.diabetic_risk.value}{flags}"
 
 
-def product_line(product: Product) -> str:
-    """One compact record of a product from our database."""
+def product_line(product: Product, user=None) -> str:
+    """One compact record of a product from our database, with the verdict for `user` if given."""
     n = product
+    personal = ""
+    if user is not None and n.product_type == "food":
+        fy = for_you(user, n, score_product(n))
+        if fy:
+            personal = f"\n  For THIS user ({', '.join(fy['conditions'])}): {fy['verdict']} -- " + " ".join(fy["reasons"][:4])
+    return _product_record(n) + personal
+
+
+def _product_record(n: Product) -> str:
     nutrition = ", ".join(
         f"{label} {value:g}{unit}"
         for label, value, unit in (
@@ -150,5 +151,5 @@ def build_context(user, message: str) -> str:
 
     lines += ["", "PRODUCTS FROM OUR DATABASE THAT THEIR MESSAGE MENTIONS"]
     products = relevant_products(message)
-    lines += [product_line(p) for p in products] if products else [NO_DATA_LINE]
+    lines += [product_line(p, user) for p in products] if products else [NO_DATA_LINE]
     return "\n".join(lines)

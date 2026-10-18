@@ -9,7 +9,6 @@ from apps.community.integrity import gtin_checksum_valid
 from apps.community.nafdac import normalize_nafdac_number
 from apps.integrations.vision_identify import IdentifyError, identify_product_from_images
 from apps.scans.models import Scan
-from apps.scoring.engine import compute_health_score
 
 from .barcodes import find_product_by_barcode
 from .identify_helpers import (
@@ -20,8 +19,9 @@ from .identify_helpers import (
     read_valid_photos,
 )
 from .models import Product
+from .scoring_helpers import score_fields, score_product
 from .serializers import ProductSerializer
-from .views import _get_or_create_explanation, _non_food_message, _nutrition_from_product, missing_names
+from .views import _get_or_create_explanation, _non_food_message
 
 
 def scored_response(request, product: Product, *, source: str, notice: str = "") -> Response:
@@ -41,7 +41,7 @@ def scored_response(request, product: Product, *, source: str, notice: str = "")
         )
 
     borrow_nutrition(product)  # a matching product on file may already hold the nutrition table
-    health_result = compute_health_score(_nutrition_from_product(product), product.ingredients_text)
+    health_result = score_product(product)
     explanation = _get_or_create_explanation(product, health_result)
     scan = Scan.objects.create(
         user=request.user,
@@ -60,12 +60,7 @@ def scored_response(request, product: Product, *, source: str, notice: str = "")
         {
             "scan_id": scan.id,
             "product": ProductSerializer(product).data,
-            "score": health_result.score,
-            "label": health_result.label.value,
-            "diabetic_risk": health_result.diabetic_risk.value,
-            "flags": health_result.flags,
-            "insufficient_data": health_result.insufficient_data,
-            "missing_nutrients": missing_names(health_result),
+            **score_fields(request.user, product, health_result),
             "is_estimated": product.is_estimated,
             "source": source,
             "explanation": explanation,

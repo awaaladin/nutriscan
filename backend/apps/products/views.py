@@ -12,6 +12,7 @@ from apps.scoring.engine import HealthScoreResult, NutritionFacts, compute_healt
 
 from .barcodes import find_product_by_barcode
 from .identify_helpers import borrow_nutrition
+from .scoring_helpers import score_fields, score_product
 from .medicine_names import is_known_medicine_name
 from .models import CachedExplanation, Product
 from .serializers import (
@@ -130,7 +131,7 @@ class ScanView(APIView):
             )
 
         borrow_nutrition(product)  # a matching product on file may already hold the nutrition table
-        result = compute_health_score(_nutrition_from_product(product), product.ingredients_text)
+        result = score_product(product)
         explanation = _get_or_create_explanation(product, result)
 
         scan = Scan.objects.create(
@@ -146,12 +147,7 @@ class ScanView(APIView):
             {
                 "scan_id": scan.id,
                 "product": ProductSerializer(product).data,
-                "score": result.score,
-                "label": result.label.value,
-                "diabetic_risk": result.diabetic_risk.value,
-                "flags": result.flags,
-                "insufficient_data": result.insufficient_data,
-                "missing_nutrients": missing_names(result),
+                **score_fields(request.user, product, result),
                 "is_estimated": product.is_estimated,
                 "source": "database",
                 "explanation": explanation,
@@ -235,5 +231,7 @@ class AnalyzeView(APIView):
                 "flags": result.flags,
                 "insufficient_data": result.insufficient_data,
                 "missing_nutrients": missing_names(result),
+                "reasons": result.reasons,
+                "diabetic_reasons": result.diabetic_reasons,
             }
         )

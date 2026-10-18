@@ -13,10 +13,10 @@ from apps.integrations.product_qa import (
     ask_about_product,
     build_product_context,
 )
-from apps.scoring.engine import compute_health_score
 
 from .barcodes import find_product_by_barcode
-from .views import _nutrition_from_product, missing_names
+from .scoring_helpers import for_you, score_product
+from .views import missing_names
 
 MAX_REPORTS_IN_CONTEXT = 5
 
@@ -53,13 +53,15 @@ class ProductAskView(APIView):
 
         score = None
         if product.product_type == "food":
-            result = compute_health_score(_nutrition_from_product(product), product.ingredients_text)
+            result = score_product(product)
             score = {
                 "score": result.score,
                 "label": result.label.value,
                 "diabetic_risk": result.diabetic_risk.value,
                 "flags": result.flags,
                 "missing": missing_names(result),
+                "reasons": result.reasons,
+                "for_you": for_you(request.user, product, result),
             }
         reports = [
             {"verdict": r.verdict, "where": r.where_bought, "comment": (r.comment or "")[:200]}

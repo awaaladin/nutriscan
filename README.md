@@ -156,6 +156,31 @@ mock-up); `branding/png/` and `favicon.ico` are renders of it. The Android app u
 `res/drawable/ic_logo.xml` (launcher icon, splash, app bar) and the download page
 uses `download/logo.svg`, the favicon set and `og-image.png` for link previews.
 
+### How scoring works (apps/scoring)
+
+The headline health score is universal (so products are comparable); a separate
+**"for you"** verdict personalises it. Both are deterministic rules, never AI output:
+
+- **Score (1-10, Good/Moderate/Avoid):** per-100 g/100 ml WHO-style tiers for sugar,
+  saturated fat and sodium. Any single "high" nutrient caps the product at Moderate
+  (score at most 6). **Drinks** (detected from the name, or "carbonated water" first)
+  use half the sugar limits. A product that would be Good but has missing nutrition
+  is **Incomplete** (no number); known-bad verdicts stand because unknowns can only
+  make them worse. Every verdict carries plain-language `reasons`.
+- **Diabetic risk (Safe/Moderate/Avoid/Unknown):** sugar (stricter for drinks),
+  refined-carbohydrate ingredients ("sugar free" claims are not counted), and net
+  carbohydrate (minus fibre) which only ever raises to Moderate and is waived for
+  high-fibre whole grains and for sugar-alcohol products with low sugar. Sugar and
+  carbohydrate both unknown is Unknown, not Safe.
+- **For you (Suitable/Caution/Avoid/Unknown):** built from the user's profile - diabetes
+  (or that health goal), high blood pressure (sodium), a weight-loss goal (energy
+  density, sugar, saturated fat) and **allergies parsed from their health notes**
+  ("Allergic to peanuts and milk"; negations like "not allergic to..." are ignored).
+  It only ever adds warnings: no allergen found is never described as "safe for your
+  allergy", because the ingredient list may be missing or incomplete.
+- History and every endpoint use the same helper (`apps/products/scoring_helpers.py`)
+  and recompute from the product's current data, so past scans are always corrected.
+
 ### What's real vs. stubbed
 
 - **Real**: WHO-threshold scoring engine (`apps/scoring/engine.py`), diabetic

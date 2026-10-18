@@ -76,6 +76,14 @@ def build_product_context(product, assessment: dict, score: dict, reports: List[
                 f"flags: {', '.join(score['flags']) or 'none'}"
                 + (f"; incomplete data, missing: {', '.join(score['missing'])}" if score.get("missing") else ""),
             ]
+    if score and score.get("reasons"):
+        lines.append("Why: " + " ".join(score["reasons"]))
+    if score and score.get("for_you"):
+        fy = score["for_you"]
+        lines.append(
+            f"VERDICT FOR THIS USER ({', '.join(fy['conditions'])}): {fy['verdict']} -- " + " ".join(fy["reasons"])
+            + " (explain this verdict; do not contradict it)"
+        )
     lines += [
         f"Authenticity evidence: {assessment['headline']} -- " + " ".join(assessment["reasons"]),
         "",

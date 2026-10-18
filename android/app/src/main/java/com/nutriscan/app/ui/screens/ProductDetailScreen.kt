@@ -159,6 +159,12 @@ fun ProductDetailScreen(
                 }
             }
 
+            // --- What it means for YOU (diabetes, blood pressure, weight goal, allergies) -----
+            result.for_you?.let {
+                Spacer(Modifier.height(12.dp))
+                ForYouCard(it)
+            }
+
             // --- Missing data: say so, and offer the way to fix it ------------------------------
             if (result.insufficient_data) {
                 Spacer(Modifier.height(12.dp))
@@ -217,7 +223,7 @@ fun ProductDetailScreen(
 
             // --- Nutrition -----------------------------------------------------------------
             Spacer(Modifier.height(20.dp))
-            Text("Nutrition (per 100g)", style = MaterialTheme.typography.titleMedium)
+            Text(if (result.beverage) "Nutrition (per 100 ml)" else "Nutrition (per 100g)", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(8.dp))
             Card(shape = RoundedCornerShape(16.dp)) {
                 Column(modifier = Modifier.padding(horizontal = 16.dp)) {
@@ -243,6 +249,12 @@ fun ProductDetailScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+
+            // --- Why this score ------------------------------------------------------------------
+            if (result.reasons.isNotEmpty() || result.diabetic_reasons.isNotEmpty()) {
+                Spacer(Modifier.height(20.dp))
+                ReasonsCard(result)
             }
 
             // --- What it's made of ---------------------------------------------------------
@@ -320,6 +332,68 @@ private fun IncompleteDataCard(result: ScanResponse, onPhotographTable: () -> Un
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 NsButton(text = "Photograph the table", onClick = onPhotographTable, modifier = Modifier.weight(1f))
                 NsOutlinedButton(text = "Type the values", onClick = onTypeValues, modifier = Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+/** The personal verdict, coloured like a traffic light, with the reasons and what it is based on.
+ * It only ever adds warnings: "Suitable" means nothing we know conflicts, not that it is safe. */
+@Composable
+private fun ForYouCard(forYou: com.nutriscan.app.data.model.ForYou) {
+    val color = when (forYou.verdict) {
+        "Avoid" -> NsRed
+        "Caution" -> NsAmber
+        "Suitable" -> NsEmerald700
+        else -> NsCharcoal400
+    }
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = color.copy(alpha = 0.13f)),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("For you", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(forYou.headline, style = MaterialTheme.typography.titleMedium, color = color)
+            if (forYou.conditions.isNotEmpty()) {
+                Text(
+                    "Based on: ${forYou.conditions.joinToString(", ")}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            forYou.reasons.forEach { reason ->
+                Text("• $reason", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(vertical = 2.dp))
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "General information, not medical advice. Check with your doctor or dietitian.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/** The reasons behind the score and the diabetic risk, in plain language. */
+@Composable
+private fun ReasonsCard(result: ScanResponse) {
+    Card(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            if (result.reasons.isNotEmpty()) {
+                Text("Why this score", style = MaterialTheme.typography.titleSmall)
+                Spacer(Modifier.height(4.dp))
+                result.reasons.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(vertical = 2.dp)) }
+            }
+            if (result.diabetic_reasons.isNotEmpty()) {
+                if (result.reasons.isNotEmpty()) Spacer(Modifier.height(12.dp))
+                Text(
+                    "Blood-sugar view" + (result.diabetic_risk?.let { " (diabetic risk: $it)" } ?: ""),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Spacer(Modifier.height(4.dp))
+                result.diabetic_reasons.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(vertical = 2.dp)) }
             }
         }
     }

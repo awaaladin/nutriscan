@@ -74,7 +74,7 @@ fun AssistantSettingsDialog(
                     value = notes,
                     onValueChange = { notes = it.take(500) },
                     label = { Text("About you (optional)") },
-                    supportingText = { Text("Allergies, conditions, medicines you take. Used to make answers personal. ${notes.length}/500") },
+                    supportingText = { Text("Allergies, conditions, medicines. Write allergies like \"Allergic to peanuts\": NutriScan then warns you about them on every scan. Also personalises chat answers. ${notes.length}/500") },
                     minLines = 3,
                     modifier = Modifier.fillMaxWidth(),
                 )

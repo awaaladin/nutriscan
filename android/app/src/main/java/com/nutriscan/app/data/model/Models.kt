@@ -59,6 +59,16 @@ data class ReportsResponse(val integrity: Integrity, val reports: List<ProductRe
 
 data class SubmitReportResponse(val report: ProductReport, val integrity: Integrity)
 
+/** What a product means for THIS user (diabetes, blood pressure, weight goal, allergies they noted).
+ * [verdict] is Suitable, Caution, Avoid or Unknown; null when they've told us nothing that changes
+ * how a product should be judged for them. */
+data class ForYou(
+    val verdict: String,
+    val headline: String,
+    val reasons: List<String> = emptyList(),
+    val conditions: List<String> = emptyList(),
+)
+
 data class ScanResponse(
     val product: Product,
     // Null for a non-food item (see product_type) -- WHO scoring doesn't apply to those.
@@ -70,6 +80,12 @@ data class ScanResponse(
     val insufficient_data: Boolean = false,
     // Which nutrients we have no value for, e.g. ["sugar", "sodium"].
     val missing_nutrients: List<String> = emptyList(),
+    // Plain-language reasons behind the label and the diabetic risk.
+    val reasons: List<String> = emptyList(),
+    val diabetic_reasons: List<String> = emptyList(),
+    // True when judged as a drink (per 100 ml, stricter sugar limits).
+    val beverage: Boolean = false,
+    val for_you: ForYou? = null,
     val explanation: String? = null,
     val product_type: String? = null,
     val detail: String? = null,
@@ -88,6 +104,12 @@ data class HistoryItem(
     val label: String,
     val diabetic_risk: String,
     val flags: List<String>,
+    val insufficient_data: Boolean = false,
+    val missing_nutrients: List<String> = emptyList(),
+    val reasons: List<String> = emptyList(),
+    val diabetic_reasons: List<String> = emptyList(),
+    val beverage: Boolean = false,
+    val for_you: ForYou? = null,
     val scanned_at: String,
 )
 

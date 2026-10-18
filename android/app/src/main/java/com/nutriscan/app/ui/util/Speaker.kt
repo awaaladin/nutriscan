@@ -149,6 +149,10 @@ fun spokenSummary(result: ScanResponse): String {
         parts += "There is no health score yet because the " +
             (result.missing_nutrients.joinToString(", ").ifBlank { "nutrition" }) + " information is missing."
     }
+    result.for_you?.let { fy ->
+        parts += "For you, with ${fy.conditions.joinToString(", ")}: ${fy.headline}."
+        fy.reasons.take(2).forEach { parts += it.substringAfter(": ") + if (it.endsWith(".")) "" else "." }
+    }
     result.diabetic_risk?.let { parts += "Diabetic risk: $it." }
     val concerns = result.flags.map { it.replace('_', ' ') }
     parts += if (concerns.isEmpty()) "No major nutrition concerns." else "Watch out for: ${concerns.joinToString(", ")}."
