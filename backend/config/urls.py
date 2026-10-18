@@ -14,6 +14,7 @@ from apps.assistant.views import (
 )
 from apps.community.views import AlertsView, ProductDisputeView, ProductReportsView, ReportFlagView
 from apps.products.complete_view import CompleteProductView
+from apps.research.views import CorrectionView, ResearchView, SearchView
 from apps.products.identify_view import IdentifyProductView
 from apps.products.qa_view import ProductAskView
 from apps.products.views import (
@@ -34,9 +35,12 @@ urlpatterns = [
     path("api/scan/", ScanView.as_view(), name="scan"),
     path("api/products/submit/", ProductSubmissionView.as_view(), name="product-submit"),
     path("api/products/identify/", IdentifyProductView.as_view(), name="product-identify"),
+    path("api/products/search/", SearchView.as_view(), name="product-search"),
     path("api/products/<str:barcode>/", ProductDetailView.as_view(), name="product-detail"),
     path("api/products/<str:barcode>/reports/", ProductReportsView.as_view(), name="product-reports"),
     path("api/products/<str:barcode>/complete/", CompleteProductView.as_view(), name="product-complete"),
+    path("api/products/<str:barcode>/research/", ResearchView.as_view(), name="product-research"),
+    path("api/products/<str:barcode>/corrections/", CorrectionView.as_view(), name="product-corrections"),
     path("api/products/<str:barcode>/ask/", ProductAskView.as_view(), name="product-ask"),
     path("api/products/<str:barcode>/dispute/", ProductDisputeView.as_view(), name="product-dispute"),
     path("api/alerts/", AlertsView.as_view(), name="alerts"),

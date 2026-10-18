@@ -5,6 +5,7 @@ from .models import Product, ProductSubmission
 
 class ProductSerializer(serializers.ModelSerializer):
     integrity = serializers.SerializerMethodField()
+    data_trust = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -15,6 +16,12 @@ class ProductSerializer(serializers.ModelSerializer):
         from apps.community.services import integrity_dict
 
         return integrity_dict(product)
+
+    def get_data_trust(self, product):
+        # Imported here: apps.research imports products models.
+        from apps.research.trust import data_trust
+
+        return data_trust(product)
 
 
 class ProductSubmissionSerializer(serializers.ModelSerializer):

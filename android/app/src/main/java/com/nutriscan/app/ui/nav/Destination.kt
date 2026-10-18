@@ -55,6 +55,9 @@ sealed class Destination(val route: String) {
         fun build(barcode: String) = "ask/$barcode"
     }
 
+    /** Find products in our own data set without scanning. */
+    data object Search : Destination("search")
+
     data object Alerts : Destination("alerts")
 
     data object Dispute : Destination("dispute/{barcode}") {

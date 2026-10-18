@@ -7,6 +7,9 @@ import com.nutriscan.app.data.model.AlertItem
 import com.nutriscan.app.data.model.AskRequest
 import com.nutriscan.app.data.model.AskResponse
 import com.nutriscan.app.data.model.AskTurn
+import com.nutriscan.app.data.model.CorrectionRequest
+import com.nutriscan.app.data.model.CorrectionResponse
+import com.nutriscan.app.data.model.SearchResponse
 import com.nutriscan.app.data.model.AssistantSettings
 import com.nutriscan.app.data.model.ChatReply
 import com.nutriscan.app.data.model.ChatThreadDetail
@@ -329,6 +332,26 @@ class NutriScanRepository(
 
     suspend fun saveAssistantSettings(settings: AssistantSettings): Result<AssistantSettings> = runCatching {
         val response = api.updateAssistantSettings(settings)
+        if (!response.isSuccessful) error(describeFailure(response))
+        requireNotNull(response.body())
+    }
+
+    /** Cross-checks the product against other sources (country-aware) and returns its updated record. */
+    suspend fun researchProduct(barcode: String): Result<ScanResponse> = runCatching {
+        val response = api.researchProduct(barcode)
+        if (!response.isSuccessful) error(describeFailure(response))
+        requireNotNull(response.body())
+    }
+
+    /** Tells us a value is wrong. It's a vote: applied only once enough credible people agree. */
+    suspend fun submitCorrection(barcode: String, field: String, value: String, reason: String): Result<CorrectionResponse> = runCatching {
+        val response = api.submitCorrection(barcode, CorrectionRequest(field, value, reason))
+        if (!response.isSuccessful) error(describeFailure(response))
+        requireNotNull(response.body())
+    }
+
+    suspend fun searchProducts(query: String): Result<SearchResponse> = runCatching {
+        val response = api.searchProducts(query)
         if (!response.isSuccessful) error(describeFailure(response))
         requireNotNull(response.body())
     }

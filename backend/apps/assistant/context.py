@@ -17,6 +17,8 @@ from apps.products.models import Product
 from apps.scans.models import Scan
 from apps.products.scoring_helpers import for_you, score_product
 
+from apps.research.knowledge import relevant_entries
+
 from .prompts import NO_DATA_LINE
 
 BARCODE_RE = re.compile(r"(?<!\d)\d{8,14}(?!\d)")
@@ -152,4 +154,10 @@ def build_context(user, message: str) -> str:
     lines += ["", "PRODUCTS FROM OUR DATABASE THAT THEIR MESSAGE MENTIONS"]
     products = relevant_products(message)
     lines += [product_line(p, user) for p in products] if products else [NO_DATA_LINE]
+
+    # Reviewed answers from our own knowledge base: how the cloud AI learns from our users.
+    entries = relevant_entries(message)
+    if entries:
+        lines += ["", "REVIEWED NUTRISCAN ANSWERS (written or approved by our team; prefer these over general knowledge)"]
+        lines += [f"- Q: {e.question}\n  A: {e.answer[:600]}" for e in entries]
     return "\n".join(lines)

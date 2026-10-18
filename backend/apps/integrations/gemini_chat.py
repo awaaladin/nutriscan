@@ -30,6 +30,7 @@ def generate(
     user_text: str,
     images: Optional[List[Tuple[bytes, str]]] = None,
     max_history: int = 10,
+    require_search: bool = False,
 ) -> dict:
     """Returns {"answer", "sources", "web_research"}. `history` is earlier turns,
     oldest first, as {"role": "user"|"assistant", "text": ...}; `images` are
@@ -69,6 +70,10 @@ def generate(
         web_research = response.status_code == 200
         if not web_research:
             _search_unavailable_until = time.time() + SEARCH_RETRY_AFTER_SECONDS
+    if not web_research and require_search:
+        # The caller only wants answers backed by live web pages; an answer from the
+        # model's memory is not evidence, so don't spend a call producing one.
+        raise IdentifyError("search_unavailable", "Live web search isn't available right now.")
     if not web_research:
         response = post_with_model_fallback(api_key, payload(False), max_attempts=2, kind="chat")
     if response.status_code != 200:

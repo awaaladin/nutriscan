@@ -86,6 +86,16 @@ fun ProductDetailScreen(
         if (autoRead && result != null) speaker.speak(spokenSummary(result))
     }
 
+    // Cross-check other sources once per product; the screen updates if anything is found.
+    val researching by viewModel.researching.collectAsState()
+    var showCorrection by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(result?.product?.barcode) {
+        result?.product?.barcode?.let { viewModel.researchCurrent(it) }
+    }
+    if (showCorrection && result != null) {
+        CorrectionDialog(repository, result.product.barcode) { showCorrection = false }
+    }
+
     // A product with no score can't be judged, so ask for the missing piece immediately
     // rather than leaving the user to find the card. Once per visit.
     var promptDismissed by rememberSaveable(result?.product?.barcode) { mutableStateOf(false) }
@@ -172,6 +182,17 @@ fun ProductDetailScreen(
                     result = result,
                     onPhotographTable = { onPhotographTable(product.barcode) },
                     onTypeValues = { onTypeValues(product.barcode) },
+                )
+            }
+
+            // --- How far the data itself can be trusted, and how to correct it -------------
+            product.data_trust?.let {
+                Spacer(Modifier.height(12.dp))
+                DataTrustCard(
+                    trust = it,
+                    checking = researching,
+                    filledIn = result.research?.applied.orEmpty(),
+                    onReportCorrection = { showCorrection = true },
                 )
             }
 

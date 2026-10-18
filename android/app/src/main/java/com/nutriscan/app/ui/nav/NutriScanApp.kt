@@ -55,6 +55,7 @@ import com.nutriscan.app.ui.screens.SubmitReportScreen
 import com.nutriscan.app.ui.screens.ProductDetailScreen
 import com.nutriscan.app.ui.screens.ProfileScreen
 import com.nutriscan.app.ui.screens.ScannerScreen
+import com.nutriscan.app.ui.screens.SearchScreen
 import com.nutriscan.app.ui.screens.SettingsScreen
 import com.nutriscan.app.ui.screens.SplashScreen
 import com.nutriscan.app.ui.screens.SubmitProductScreen
@@ -171,6 +172,7 @@ fun NutriScanApp() {
                     onOpenAchievements = { navController.navigate(Destination.Achievements.route) },
                     onOpenAlerts = { navController.navigate(Destination.Alerts.route) },
                     onOpenAssistant = { navController.navigate(Destination.Chat.build()) },
+                    onOpenSearch = { navController.navigate(Destination.Search.route) },
                 )
             }
             animatedComposable(Destination.Scanner.route) {
@@ -327,6 +329,17 @@ fun NutriScanApp() {
                     preferences = preferences,
                     barcode = barcode,
                     onBack = { navController.popBackStack() },
+                )
+            }
+            animatedComposable(Destination.Search.route) {
+                SearchScreen(
+                    repository = repository,
+                    onBack = { navController.popBackStack() },
+                    onOpenProduct = { barcode ->
+                        // Same path as a scan: look it up, score it, open the product screen.
+                        mainViewModel.onBarcodeScanned(barcode)
+                        navController.navigate(Destination.Analyzing.route)
+                    },
                 )
             }
             animatedComposable(Destination.Alerts.route) {

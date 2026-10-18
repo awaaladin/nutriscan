@@ -136,6 +136,32 @@ class MainViewModel(private val repository: NutriScanRepository) : ViewModel() {
         is ScanOutcome.Error -> ScanUiState.Error(message)
     }
 
+    private val researched = mutableSetOf<String>()
+
+    /** True while a cross-check is running, so the screen can say "Checking other sources...". */
+    private val _researching = MutableStateFlow(false)
+    val researching: StateFlow<Boolean> = _researching
+
+    /** Cross-checks the open product against other sources (Open Food Facts, country-aware) once
+     * per session, and swaps in the updated record: filled-in values, a new trust level, a
+     * corrected score. The existing explanation is kept (the cross-check doesn't regenerate it). */
+    fun researchCurrent(barcode: String) {
+        val current = (_scanState.value as? ScanUiState.Success)?.result ?: return
+        if (current.product.barcode != barcode || !researched.add(barcode)) return
+        val level = current.product.data_trust?.level
+        if (level == "verified" || level == "corroborated") return // nothing more to prove
+        viewModelScope.launch {
+            _researching.value = true
+            repository.researchProduct(barcode).onSuccess { updated ->
+                val open = (_scanState.value as? ScanUiState.Success)?.result
+                if (open?.product?.barcode == barcode) {
+                    _scanState.value = ScanUiState.Success(updated.copy(explanation = open.explanation, scan_id = open.scan_id))
+                }
+            }
+            _researching.value = false
+        }
+    }
+
     /** Opens a scan from the user's history in the full product screen. The
      * history row already carries the whole product and the score it got, so
      * nothing is fetched again. */

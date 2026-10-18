@@ -3,6 +3,9 @@ package com.nutriscan.app.data.remote
 import com.nutriscan.app.data.model.AlertItem
 import com.nutriscan.app.data.model.AskRequest
 import com.nutriscan.app.data.model.AskResponse
+import com.nutriscan.app.data.model.CorrectionRequest
+import com.nutriscan.app.data.model.CorrectionResponse
+import com.nutriscan.app.data.model.SearchResponse
 import com.nutriscan.app.data.model.AssistantSettings
 import com.nutriscan.app.data.model.ChatReply
 import com.nutriscan.app.data.model.ChatThreadDetail
@@ -37,6 +40,7 @@ import retrofit2.http.POST
 import retrofit2.http.Part
 import retrofit2.http.PartMap
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface ApiService {
     @POST("api/auth/register/")
@@ -120,6 +124,16 @@ interface ApiService {
 
     @PATCH("api/assistant/settings/")
     suspend fun updateAssistantSettings(@Body body: AssistantSettings): Response<AssistantSettings>
+
+    /** Cross-checks a product against other sources and returns its updated, scored record. */
+    @POST("api/products/{barcode}/research/")
+    suspend fun researchProduct(@Path("barcode") barcode: String): Response<ScanResponse>
+
+    @POST("api/products/{barcode}/corrections/")
+    suspend fun submitCorrection(@Path("barcode") barcode: String, @Body request: CorrectionRequest): Response<CorrectionResponse>
+
+    @GET("api/products/search/")
+    suspend fun searchProducts(@Query("q") query: String): Response<SearchResponse>
 
     @POST("api/products/{barcode}/ask/")
     suspend fun askAboutProduct(@Path("barcode") barcode: String, @Body request: AskRequest): Response<AskResponse>

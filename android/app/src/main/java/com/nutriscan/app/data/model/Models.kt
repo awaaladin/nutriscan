@@ -1,5 +1,18 @@
 package com.nutriscan.app.data.model
 
+/** How far a product's data can be trusted, and exactly why. [level] is verified, corroborated,
+ * sourced or unverified. Computed server-side from the evidence we hold. */
+data class DataTrust(
+    val level: String,
+    val headline: String,
+    val evidence: List<String> = emptyList(),
+    val warnings: List<String> = emptyList(),
+    val sources: List<TrustSource> = emptyList(),
+    val researched_at: String? = null,
+)
+
+data class TrustSource(val type: String = "", val label: String = "", val url: String = "")
+
 data class Product(
     val id: Int? = null,
     val barcode: String,
@@ -23,6 +36,7 @@ data class Product(
     val manufacturer_verified: Boolean = false,
     // Null on responses from older backends.
     val integrity: Integrity? = null,
+    val data_trust: DataTrust? = null,
 )
 
 /** What our evidence says about a product. [tier] is one of verified,
@@ -86,6 +100,8 @@ data class ScanResponse(
     // True when judged as a drink (per 100 ml, stricter sugar limits).
     val beverage: Boolean = false,
     val for_you: ForYou? = null,
+    // Present on the response to the research call: what the cross-check did.
+    val research: ResearchInfo? = null,
     val explanation: String? = null,
     val product_type: String? = null,
     val detail: String? = null,
@@ -245,3 +261,32 @@ data class AssistantSettings(
 )
 
 data class FeedbackRequest(val value: Int, val note: String = "")
+
+/** What a research run did: [applied] are the fields filled in from other sources. */
+data class ResearchInfo(
+    val ran: Boolean = false,
+    val applied: List<String> = emptyList(),
+    val conflicts: List<String> = emptyList(),
+    val skipped: List<String> = emptyList(),
+)
+
+data class CorrectionRequest(val field: String, val value: String, val reason: String = "")
+
+data class CorrectionResponse(val applied: Boolean = false, val detail: String = "")
+
+data class TrustBrief(val level: String = "unverified", val headline: String = "")
+
+/** One product found by searching our own data set. */
+data class SearchResult(
+    val barcode: String,
+    val name: String,
+    val brand: String? = null,
+    val nafdac_number: String? = null,
+    val product_type: String? = null,
+    val trust: TrustBrief = TrustBrief(),
+    val label: String? = null,
+    val score: Int? = null,
+    val diabetic_risk: String? = null,
+)
+
+data class SearchResponse(val query: String = "", val results: List<SearchResult> = emptyList())

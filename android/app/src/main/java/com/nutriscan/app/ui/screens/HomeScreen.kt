@@ -61,6 +61,7 @@ fun HomeScreen(
     onOpenAchievements: () -> Unit,
     onOpenAlerts: () -> Unit,
     onOpenAssistant: () -> Unit,
+    onOpenSearch: () -> Unit,
 ) {
     val recentScans by repository.observeCachedScans().collectAsState(initial = emptyList())
 
@@ -152,6 +153,12 @@ fun HomeScreen(
                     }
                 }
                 Spacer(Modifier.height(16.dp))
+                NsOutlinedButton(
+                    text = "Search our product database",
+                    onClick = onOpenSearch,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(8.dp))
                 NsOutlinedButton(
                     text = "Ask NutriScan about food or medicine",
                     onClick = onOpenAssistant,
