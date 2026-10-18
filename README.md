@@ -149,6 +149,26 @@ medicines and spotting counterfeit products, personal to the user:
   scrubbing is best-effort. Actually fine-tuning a model needs thousands of reviewed
   examples; this builds that dataset.
 
+### Trusted data set and research (apps/research)
+
+Every product carries a **data trust** level computed from stored evidence, never
+asserted: `verified` (NAFDAC confirmed), `corroborated` (two independent sources
+agree), `sourced` (one cited source) or `unverified`.
+
+- `research_product` cross-checks a product against Open Food Facts (name + brand +
+  country aware; GS1 prefix 615 = Nigeria). Blanks are filled only when a source agrees
+  on at least two fields and conflicts on none; existing values are never overwritten;
+  conflicts become open corrections for review. AI web research is used only when live
+  web search ran and cited pages (needs Google AI billing); memory-only answers are never evidence.
+- Users report corrections (`POST /api/products/<barcode>/corrections/`). They are votes,
+  weighted by account age and reviewer status, applied at weight 3.0 or by an admin.
+- `GET /api/products/search/?q=` searches the data set by name, brand, barcode or NAFDAC.
+- The assistant retrieves **approved** `KnowledgeEntry` rows ("reviewed answers"). Build
+  candidates with `manage.py build_knowledge_base` (consented, thumbs-up chats only), approve
+  in admin, export with `export_knowledge_base`, and check `dataset_readiness` to see when
+  enough reviewed data exists (1000 Q&A, 500 trusted products) to fine-tune a model.
+- Batch research: `manage.py research_products`.
+
 ### Branding
 
 `branding/logo.svg` is the source of the logo (rebuilt as a vector from the supplied
