@@ -1,0 +1,100 @@
+<!--Our data and AI|How NutriScan builds its own product data set, how it decides what to trust, why votes never change data alone, and how it will grow into a NutriScan AI model.-->
+<section class="page-hero"><div class="container">
+  <span class="eyebrow">Our data &amp; AI</span>
+  <h1>A data set we can stand behind</h1>
+  <p>NutriScan is building its own Nigerian product data set, and an assistant that learns from it. Here is how, and the rules that keep it honest.</p>
+</div></section>
+
+<section class="section">
+  <div class="container split">
+    <div class="reveal">
+      <span class="kicker">The problem</span>
+      <h2>Global databases barely know Nigeria</h2>
+      <p>Open databases such as Open Food Facts are a great start, but coverage of Nigerian brands is thin. The products people actually buy are often missing, and the ones that exist are sometimes for a different country’s version of the pack.</p>
+      <p>So NutriScan grows its own data set, one scanned product at a time. The hard part is not collecting data. It is knowing which data to believe.</p>
+    </div>
+    <div class="reveal" style="--d:.1s">
+      <div class="card"><h3>What the data set holds</h3>
+        <ul class="checks">
+          <li>Products: name, brand, barcode, type</li>
+          <li>Nutrition per 100 g and ingredients</li>
+          <li>NAFDAC numbers and whether they are confirmed</li>
+          <li>Evidence: where each fact came from</li>
+          <li>Community reports and reviewed corrections</li>
+          <li>Reviewed questions and answers for the assistant</li>
+        </ul>
+        <p style="margin-top:14px">It holds product facts, plus the photos people choose to attach to a fake-product report. Your health details and chats are kept apart from it.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section dark">
+  <div class="container">
+    <div class="section-head reveal"><span class="kicker">How a record is built</span><h2>From a scan to a trusted entry</h2>
+      <p>Every product follows the same path. Nothing skips a step.</p></div>
+    <div class="flow reveal">
+      <div class="node"><b>1. A person scans</b><small>A new product is photographed and read by AI. It is saved as “Estimated”.</small></div>
+      <div class="node"><b>2. We cross-check</b><small>Other databases are searched by name, brand and country.</small></div>
+      <div class="node"><b>3. Sources are compared</b><small>Values must agree. Different country means reference only.</small></div>
+      <div class="node"><b>4. Trust is assigned</b><small>Verified, corroborated, sourced or unverified, with the reasons.</small></div>
+      <div class="node"><b>5. It joins the data set</b><small>Next time anyone scans it, the answer is instant.</small></div>
+    </div>
+    <div class="grid-3" style="margin-top:34px">
+      <div class="card reveal"><h3>Country-aware</h3><p>A listing from another country is never used to fill in a Nigerian product. The barcode prefix and the pack tell us where it belongs.</p></div>
+      <div class="card reveal" style="--d:.06s"><h3>Never overwrites</h3><p>Research can fill a blank only when sources agree. It never replaces a value we already hold. A real conflict is sent for review instead.</p></div>
+      <div class="card reveal" style="--d:.12s"><h3>AI with citations only</h3><p>AI web research counts as evidence only when it cites live pages. An AI answering from memory is never treated as a source.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="section-head reveal"><span class="kicker">Data trust</span><h2>Four levels, and you can see why</h2>
+      <p>The level is calculated from the evidence we hold. It is never set by hand to make a product look better.</p></div>
+    <div class="levels">
+      <div class="level reveal" style="--c:#0e6b4f"><b>Verified</b><p>The NAFDAC number was confirmed on the official register.</p></div>
+      <div class="level reveal" style="--c:#1b8a5a;--d:.06s"><b>Corroborated</b><p>Two independent sources agree on the product’s values.</p></div>
+      <div class="level reveal" style="--c:#2e7daf;--d:.12s"><b>Sourced</b><p>One source we can cite supports it.</p></div>
+      <div class="level reveal" style="--c:#7a8680;--d:.18s"><b>Unverified</b><p>Not enough proof yet. We say so plainly.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section paper">
+  <div class="container split">
+    <div class="reveal">
+      <span class="kicker">Why votes are not enough</span>
+      <h2>Popular is not the same as true</h2>
+      <p>Anyone can create accounts, and a crowd can be wrong or paid. So in NutriScan a vote never changes a product’s data on its own.</p>
+      <ul class="checks">
+        <li>A correction needs enough <strong>credible</strong> people. Brand-new accounts count for very little.</li>
+        <li>And it needs <strong>an independent source</strong> that backs the same value. A database, a cited page or a label photo.</li>
+        <li>Otherwise it waits for <strong>a person on our team</strong> to review it.</li>
+      </ul>
+      <p>Ten accounts agreeing on a wrong sugar value change nothing. We test for exactly that.</p>
+    </div>
+    <div class="reveal" style="--d:.1s">
+      <div class="card"><h3>A correction, step by step</h3>
+        <div class="timeline" style="margin-top:18px">
+          <div class="row"><div class="n">1</div><div><h3>You report a value</h3><p>For example, “the sugar is 14 g, not 4 g.”</p></div></div>
+          <div class="row"><div class="n">2</div><div><h3>It is recorded as a vote</h3><p>Weighted by how established the account is.</p></div></div>
+          <div class="row"><div class="n">3</div><div><h3>We look for proof</h3><p>An independent source, or our reviewer.</p></div></div>
+          <div class="row"><div class="n">4</div><div><h3>Only then it changes</h3><p>And the evidence is recorded on the product.</p></div></div>
+        </div></div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="section-head reveal"><span class="kicker">NutriScan AI</span><h2>How the assistant learns from our data</h2>
+      <p>We want an AI that knows Nigerian food and medicine, and that gets better as the data set grows. We are doing this in honest stages, and we will say which stage we are at.</p></div>
+    <div class="grid-3">
+      <div class="card reveal"><span class="tag">Today</span><h3 style="margin-top:12px">Our data first</h3><p>The assistant is told to rely on NutriScan’s own scores and trust levels. It also reads <strong>answers our team has reviewed and approved</strong>, and prefers them to its own guesses. Cloud AI from Google does the language work.</p></div>
+      <div class="card reveal" style="--d:.08s"><span class="tag">Building</span><h3 style="margin-top:12px">A reviewed training set</h3><p>Helpful chats from people who opted in are anonymised and put in a queue. Our team reviews them. Only approved examples count. A readiness report tells us when there is enough.</p></div>
+      <div class="card reveal" style="--d:.16s"><span class="tag soon">Planned</span><h3 style="margin-top:12px">A NutriScan model</h3><p>When there are thousands of reviewed examples, we will train a model on them. We will not train on unreviewed data, or on anyone’s chats without their opt-in.</p></div>
+    </div>
+    <div class="note green reveal" style="margin-top:30px"><p><strong>Your say.</strong> Sharing your chats to improve NutriScan is off by default. You can turn it on or off in the app at any time, and you can delete your chats whenever you like.</p></div>
+    <div class="note reveal"><p><strong>What AI does here, and does not.</strong> AI reads labels, explains results and answers questions. The health score always comes from fixed, published rules. See <a href="safety.html#ai">how we use AI</a>.</p></div>
+  </div>
+</section>

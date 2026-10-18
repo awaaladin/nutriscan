@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 610" role="img" aria-label="The Ask NutriScan chat" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif">
+<defs>
+  <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E1C766"/><stop offset="1" stop-color="#B8860B"/></linearGradient>
+  <clipPath id="scr"><rect x="10" y="10" width="280" height="590" rx="34"/></clipPath>
+</defs>
+<rect width="300" height="610" rx="44" fill="#0E1412"/>
+<rect x="10" y="10" width="280" height="590" rx="34" fill="#F7F6F2"/>
+<g clip-path="url(#scr)">
+<rect x="10" y="10" width="280" height="76" fill="#0B2E22"/>
+<circle cx="40" cy="62" r="13" fill="url(#gold)"/>
+<text x="62" y="67" font-size="15" fill="#fff" font-weight="600" text-anchor="start" >Ask NutriScan</text>
+<text x="62" y="80" font-size="9" fill="#9DB1A7" font-weight="400" text-anchor="start" >Food, medicine &amp; fake products</text>
+<rect x="64" y="104" width="206" height="52" rx="16" fill="#0E6B4F"/>
+<text x="76" y="124" font-size="11" fill="#fff" font-weight="400" text-anchor="start" >Can my father with diabetes</text>
+<text x="76" y="140" font-size="11" fill="#fff" font-weight="400" text-anchor="start" >have this biscuit?</text>
+<rect x="20" y="170" width="236" height="150" rx="16" fill="#fff" stroke="#DCE0D8"/>
+<text x="32" y="192" font-size="10.5" fill="#171C1A" font-weight="400" text-anchor="start" >It has about 11 g of sugar per 100 g,</text>
+<text x="32" y="207" font-size="10.5" fill="#171C1A" font-weight="400" text-anchor="start" >which is high for someone with diabetes.</text>
+<text x="32" y="226" font-size="10.5" fill="#171C1A" font-weight="400" text-anchor="start" >A small portion now and then may be</text>
+<text x="32" y="241" font-size="10.5" fill="#171C1A" font-weight="400" text-anchor="start" >fine, but a pharmacist or dietitian</text>
+<text x="32" y="256" font-size="10.5" fill="#171C1A" font-weight="400" text-anchor="start" >can give you advice that fits him.</text>
+<rect x="32" y="270" width="140" height="34" rx="10" fill="#E6F3EC"/>
+<text x="42" y="285" font-size="9.5" fill="#0E6B4F" font-weight="600" text-anchor="start" >Our data: Corroborated</text>
+<text x="42" y="297" font-size="9" fill="#5D6A64" font-weight="400" text-anchor="start" >NAFDAC number captured</text>
+<path d="M36 336 q0 -9 8 -9 h12 q8 0 8 9 v6 l-8 0 l-6 6 l0 -6 l-6 0 z" fill="none" stroke="#5D6A64" stroke-width="1.4"/>
+<text x="80" y="342" font-size="10" fill="#5D6A64" font-weight="400" text-anchor="start" >Helpful</text>
+<text x="130" y="342" font-size="10" fill="#5D6A64" font-weight="400" text-anchor="start" >Not helpful</text>
+<text x="204" y="342" font-size="10" fill="#0E6B4F" font-weight="600" text-anchor="start" >Read aloud</text>
+<rect x="20" y="540" width="260" height="40" rx="20" fill="#fff" stroke="#DCE0D8"/>
+<circle cx="44" cy="560" r="9" fill="none" stroke="#5D6A64" stroke-width="1.5"/>
+<text x="66" y="564" font-size="11.5" fill="#8A948E" font-weight="400" text-anchor="start" >Ask about a product…</text>
+<circle cx="256" cy="560" r="12" fill="#0E6B4F"/><path d="M251 560 h10 m-4 -4 l4 4 l-4 4" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<rect x="124" y="18" width="52" height="14" rx="7" fill="#0E1412"/>
+<rect x="110" y="588" width="80" height="4" rx="2" fill="#CFD3CC"/>
+</svg>

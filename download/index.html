@@ -1,117 +1,169 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>NutriScan — Download</title>
-<link rel="icon" type="image/svg+xml" href="./logo.svg" />
-<link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png" />
-<link rel="icon" href="./favicon.ico" sizes="48x48" />
-<link rel="apple-touch-icon" href="./apple-touch-icon.png" />
-<meta name="theme-color" content="#0b2e22" />
-<meta property="og:title" content="NutriScan - Scan. Know. Choose Better." />
-<meta property="og:description" content="Scan any packaged food or medicine: health score, diabetic risk and a counterfeit check. Nigeria-first." />
-<meta property="og:image" content="https://nutriscan-download.vercel.app/og-image.png" />
-<meta property="og:type" content="website" />
-<meta name="twitter:card" content="summary_large_image" />
-<style>
-  :root {
-    --emerald-900: #0b2e22;
-    --emerald-700: #0e6b4f;
-    --emerald-500: #1b8a5a;
-    --gold-500: #c9a227;
-    --cream: #f7f6f2;
-    --charcoal: #171c1a;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-    background: linear-gradient(160deg, var(--emerald-900), #123d2c, var(--emerald-900));
-    color: var(--cream);
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-  }
-  .card {
-    max-width: 440px;
-    width: 100%;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 24px;
-    padding: 36px 32px;
-    text-align: center;
-  }
-  .badge {
-    width: 72px;
-    height: 72px;
-    margin: 0 auto 20px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.08);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 32px;
-  }
-  .logo { display: block; margin: 0 auto 16px; border-radius: 24px; box-shadow: 0 8px 28px rgba(0,0,0,0.35); }
-  h1 { font-size: 30px; margin: 0 0 8px; font-weight: 800; letter-spacing: -0.5px; }
-  h1 .scan { color: #8cc63f; }
-  p.sub { color: rgba(247,246,242,0.75); margin: 0 0 28px; line-height: 1.5; }
-  .download-btn {
-    display: inline-block;
-    width: 100%;
-    background: var(--gold-500);
-    color: var(--charcoal);
-    font-weight: 600;
-    font-size: 16px;
-    padding: 16px 20px;
-    border-radius: 14px;
-    text-decoration: none;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-  }
-  .download-btn:active { transform: scale(0.98); }
-  .meta { margin-top: 14px; font-size: 13px; color: rgba(247,246,242,0.6); }
-  .steps {
-    margin-top: 32px;
-    text-align: left;
-    background: rgba(255,255,255,0.04);
-    border-radius: 16px;
-    padding: 18px 20px;
-  }
-  .steps h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--gold-500); margin: 0 0 12px; }
-  .steps ol { margin: 0; padding-left: 20px; line-height: 1.7; font-size: 14px; color: rgba(247,246,242,0.85); }
-  .footer-note { margin-top: 24px; font-size: 12px; color: rgba(247,246,242,0.5); line-height: 1.5; }
-  .legal-links { margin-top: 16px; font-size: 12px; }
-  .legal-links a { color: rgba(247,246,242,0.7); text-decoration: underline; margin: 0 8px; }
-  .powered-by { margin-top: 28px; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(247,246,242,0.4); }
-  .powered-by strong { color: var(--gold-500); }
-</style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NutriScan: Know what you eat</title>
+<meta name="description" content="Scan packaged food and medicine for a clear health score, advice that fits you and an honest check on whether it can be trusted. Built for Nigeria first.">
+<meta name="theme-color" content="#0b2e22">
+<link rel="icon" type="image/svg+xml" href="logo.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" href="favicon.ico" sizes="48x48">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="canonical" href="https://nutriscan-download.vercel.app/">
+<meta property="og:title" content="NutriScan: Know what you eat">
+<meta property="og:description" content="Scan packaged food and medicine for a clear health score, advice that fits you and an honest check on whether it can be trusted. Built for Nigeria first.">
+<meta property="og:image" content="https://nutriscan-download.vercel.app/og-image.png">
+<meta property="og:url" content="https://nutriscan-download.vercel.app/">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<script>(function(){var d=document.documentElement;d.className+=" js";try{if(!sessionStorage.getItem("ns-seen")&&!matchMedia("(prefers-reduced-motion: reduce)").matches)d.className+=" show-loader";}catch(e){}})();</script>
+<link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-  <div class="card">
-    <img class="logo" src="./logo.svg" alt="NutriScan logo" width="104" height="104" />
-    <h1>Nutri<span class="scan">Scan</span></h1>
-    <p class="sub">Scan any packaged food or medicine for an instant health score, diabetic risk read and counterfeit check.<br /><strong style="color:#e6bb4d">Scan · Know · Choose Better</strong></p>
-    <a class="download-btn" href="./nutriscan.apk" download>Download for Android</a>
-    <div class="meta">v0.2.0 · Beta build · Android 8.0+</div>
-    <div class="steps">
-      <h2>After downloading</h2>
-      <ol>
-        <li>Open the downloaded file from your notifications or Downloads folder.</li>
-        <li>If Chrome warns about unknown apps, tap <strong>Settings</strong> → allow Chrome to install unknown apps → go back and tap <strong>Install</strong>.</li>
-        <li>Open NutriScan and create an account to start scanning.</li>
-      </ol>
+<div class="loader" aria-hidden="true">
+  <div class="disc"><svg viewBox="0 0 96 96"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E1C766"/><stop offset="1" stop-color="#B8860B"/></linearGradient></defs>
+  <circle cx="48" cy="48" r="48" fill="url(#lg)"/><path transform="translate(48 48) scale(2) translate(-12 -12)" fill="#0B2E22" fill-rule="evenodd" d="M5,5H11V11H5ZM6.5,6.5H9.5V9.5H6.5ZM13,5H19V11H13ZM14.5,6.5H17.5V9.5H14.5ZM5,13H11V19H5ZM6.5,14.5H9.5V17.5H6.5ZM13,13H14.5V14.5H13ZM14.5,14.5H16V16H14.5ZM16,13H17.5V14.5H16ZM13,16H14.5V17.5H13ZM14.5,17.5H16V19H14.5ZM16,16H17.5V17.5H16ZM17.5,14.5H19V16H17.5ZM17.5,17.5H19V19H17.5ZM22,7L20,7L20,4L17,4L17,2L22,2ZM22,22L17,22L17,20L20,20L20,17L22,17ZM2,22L2,17L4,17L4,20L7,20L7,22ZM2,2L7,2L7,4L4,4L4,7L2,7Z"/></svg></div>
+  <div class="word">Nutri<span>Scan</span></div>
+  <div class="tag-line">Know what you eat</div>
+</div>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header"><div class="container nav">
+  <a class="brand" href="./" aria-label="NutriScan home"><img src="logo.svg" alt="" width="34" height="34"><span class="wm">Nutri<span>Scan</span></span></a>
+  <button class="menu-btn" aria-label="Menu" aria-expanded="false" aria-controls="nav-links"><span></span><span></span><span></span></button>
+  <nav class="nav-links" id="nav-links" aria-label="Main"><a href="./" aria-current="page">Home</a><a href="how-it-works.html">How it works</a><a href="features.html">Features</a><a href="our-data.html">Our data & AI</a><a href="safety.html">Safety</a><a href="about.html">About</a><a href="contact.html">Contact</a><a class="btn btn-gold btn-sm" href="download.html">Download</a></nav>
+</div></header>
+<main id="main">
+<section class="hero">
+  <div class="container grid">
+    <div>
+      <span class="eyebrow">Food &amp; medicine · Built for Nigeria</span>
+      <h1>Know what is in it. <em>Know if it can be trusted.</em></h1>
+      <p class="lead">Scan the barcode on a packaged food or medicine. NutriScan gives you a clear health score, what it means for you and your health, and an honest check on whether the product looks genuine.</p>
+      <div class="cta-row">
+        <a class="btn btn-gold" href="download.html">Download for Android</a>
+        <a class="btn btn-ghost" href="how-it-works.html">See how it works</a>
+      </div>
+      <p class="fineprint">Free to start &nbsp;·&nbsp; Android 8.0 or newer &nbsp;·&nbsp; Beta build</p>
     </div>
-    <div class="footer-note">
-      This is a beta build shared directly for testing, ahead of the Play Store release.
-      Educational health information only — not medical advice.
+    <div class="phone-stage">
+      <img class="phone" src="assets/img/phone-result.svg" alt="A NutriScan result: Moderate 5 out of 10, advice for someone with diabetes and a data trust card" width="300" height="610">
+      <div class="chip-float a"><i></i>NAFDAC number captured</div>
+      <div class="chip-float b"><i></i>High sugar for diabetes</div>
     </div>
-    <div class="legal-links">
-      <a href="./terms.html">Terms &amp; Conditions</a>·<a href="./privacy.html">Privacy Policy</a>
-    </div>
-    <div class="powered-by">Powered by <strong>JCN</strong></div>
   </div>
+</section>
+
+<section class="section tight">
+  <div class="container">
+    <div class="facts reveal">
+      <div><strong>Based on WHO guidance</strong><span>Scores use published WHO limits for sugar, salt and saturated fat, per 100 g.</span></div>
+      <div><strong>Evidence, not guesses</strong><span>Every product shows how far its information can be trusted, and why.</span></div>
+      <div><strong>Your health stays yours</strong><span>Health details are optional and never sold. You can delete your history any time.</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container split">
+    <div class="reveal">
+      <span class="kicker">Why we built it</span>
+      <h2>Labels are hard to read. Fakes are hard to spot.</h2>
+      <p>Most of us decide what to buy in a few seconds, in a market or a shop. Nutrition tables are small and full of numbers. And a look-alike pack can sit on the same shelf as the real one.</p>
+      <p>The World Health Organization estimates that about 1 in 10 medical products in low- and middle-income countries is substandard or falsified (WHO, 2017). Packaged food faces the same copycat problem.</p>
+      <p>NutriScan puts the information in your hand at the shelf: what is in it, whether it suits you, and what other people and independent sources say about it.</p>
+    </div>
+    <figure class="reveal" style="--d:.12s">
+      <img class="scene" src="assets/img/scene-shelf.svg" alt="Two packs that look identical on a shelf. A phone flags one as reported fake and shows the other has a NAFDAC number captured." width="840" height="440" loading="lazy">
+      <figcaption>Illustration. Packs and reports shown are examples.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="section paper">
+  <div class="container">
+    <div class="section-head reveal"><span class="kicker">How it works</span><h2>From shelf to decision in four steps</h2>
+      <p>No account needed to understand the idea. Here is what happens when you scan.</p></div>
+    <div class="grid-4">
+      <div class="card reveal"><span class="stepno">1</span><h3>Scan</h3><p>Point your camera at the barcode. Or type it in. If the pack is new to us, take two photos and we add it.</p></div>
+      <div class="card reveal" style="--d:.08s"><span class="stepno">2</span><h3>Understand</h3><p>A score from 1 to 10 and a plain label: Good, Moderate or Avoid, with the reasons spelled out.</p></div>
+      <div class="card reveal" style="--d:.16s"><span class="stepno">3</span><h3>Check trust</h3><p>See how far the data can be trusted, whether a NAFDAC number was captured, and what people have reported.</p></div>
+      <div class="card reveal" style="--d:.24s"><span class="stepno">4</span><h3>Ask or report</h3><p>Ask NutriScan a question about food or medicine, have it read aloud, or report a pack that looks wrong.</p></div>
+    </div>
+    <p style="margin-top:28px"><a class="btn btn-dark" href="how-it-works.html">See each step in detail</a></p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="section-head reveal"><span class="kicker">What it does</span><h2>Everything in one calm place</h2></div>
+    <div class="grid-3">
+      <div class="card reveal"><div class="icon"><svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M8 8v8M12 8v8M16 8v8"/></svg></div><h3>Instant health score</h3><p>Sugar, salt, saturated fat and fibre, measured against WHO limits, with a diabetic risk read.</p></div>
+      <div class="card reveal" style="--d:.06s"><div class="icon"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.6-7 10-7 10z"/></svg></div><h3>Made personal</h3><p>Tell us about diabetes, blood pressure, weight goals or allergies, and the verdict changes to fit you.</p></div>
+      <div class="card reveal" style="--d:.12s"><div class="icon"><svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6l8-3zM9 12l2 2 4-4"/></svg></div><h3>Counterfeit awareness</h3><p>NAFDAC numbers, community reports with photos, and clear alerts for products reported as fake.</p></div>
+      <div class="card reveal"><div class="icon"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg></div><h3>Ask NutriScan</h3><p>A chat that knows nutrition and medicines. Add photos, get answers in plain language, hear them read aloud.</p></div>
+      <div class="card reveal" style="--d:.06s"><div class="icon"><svg viewBox="0 0 24 24"><path d="M4 7h3l2-3h6l2 3h3v12H4zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg></div><h3>Teach it new products</h3><p>Photograph a pack we have not seen. It is read, saved, and every later scan is instant for everyone.</p></div>
+      <div class="card reveal" style="--d:.12s"><div class="icon"><svg viewBox="0 0 24 24"><path d="M3 12h4l3 7 4-14 3 7h4"/></svg></div><h3>Honest about gaps</h3><p>If key data is missing we say so and ask for it. We never invent a score for a product we cannot judge.</p></div>
+    </div>
+    <p style="margin-top:28px"><a class="btn btn-dark" href="features.html">Explore all features</a></p>
+  </div>
+</section>
+
+<section class="section dark">
+  <div class="container split">
+    <div class="reveal">
+      <span class="kicker">Honest by design</span>
+      <h2>We would rather say “not sure” than be wrong.</h2>
+      <p>Health information is only useful if it is true. So NutriScan is built around a few rules that we do not bend.</p>
+      <ul class="checks">
+        <li><strong>Rules set the score.</strong> AI helps read labels and explain results. It never decides the score.</li>
+        <li><strong>Votes are not proof.</strong> A correction changes our data only when an independent source or our team backs it.</li>
+        <li><strong>Unknown stays unknown.</strong> No data means no score, and a clear way to add it.</li>
+      </ul>
+      <p style="margin-top:22px"><a class="btn btn-gold" href="our-data.html">How our data and AI work</a></p>
+    </div>
+    <figure class="reveal" style="--d:.12s">
+      <img class="phone" src="assets/img/phone-trust.svg" alt="The four data trust levels: Verified, Corroborated, Sourced and Unverified" width="300" height="610" loading="lazy">
+      <figcaption>Illustration with sample data.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="section-head reveal"><span class="kicker">Questions people ask</span><h2>Before you download</h2></div>
+    <div class="faq narrow" style="margin:0">
+      <details class="reveal"><summary>Is NutriScan free?</summary><div class="ans"><p>Yes. Scanning, health scores and diabetic risk are free. A Pro plan adds a personalised avoid-list and scan-pattern tracking, paid through Google Play.</p></div></details>
+      <details class="reveal"><summary>Is this medical advice?</summary><div class="ans"><p>No. NutriScan gives educational information based on public WHO guidance. It does not diagnose or treat anything. For medicines, doses, allergies or a diagnosed condition, ask a doctor or pharmacist. <a href="safety.html#medical">Read more</a>.</p></div></details>
+      <details class="reveal"><summary>Can it tell me for certain that a product is fake?</summary><div class="ans"><p>No, and no app honestly can. Counterfeiters copy real barcodes and even real NAFDAC numbers. NutriScan shows you the evidence: whether a NAFDAC number was captured and confirmed, and what other people reported. You decide.</p></div></details>
+      <details class="reveal"><summary>What happens to my photos and data?</summary><div class="ans"><p>Photos you take to identify a product are read and not kept. Your health details are optional. We do not sell your data. You can delete your scan history and chats in the app. <a href="privacy.html">Read the Privacy Policy</a>.</p></div></details>
+      <details class="reveal"><summary>Why does my phone warn me when I install?</summary><div class="ans"><p>The beta is shared as a direct download, not through the Play Store, so Android asks you to allow it. <a href="download.html">The download page walks you through it</a> and shows how to check the file is genuine.</p></div></details>
+    </div>
+  </div>
+</section>
+
+<section class="section tight">
+  <div class="container"><div class="cta-band reveal">
+    <h2>Check your next pack in seconds</h2>
+    <p>Download the beta, scan something from your kitchen, and see what NutriScan says.</p>
+    <a class="btn btn-gold" href="download.html">Download for Android</a>
+  </div></div>
+</section>
+
+</main>
+<footer class="site-footer"><div class="container">
+  <div class="foot-grid">
+    <div><a class="brand" href="./"><img src="logo.svg" alt="" width="34" height="34"><span class="wm">Nutri<span>Scan</span></span></a>
+      <p>Scan packaged food and medicine. Understand what is in it, what it means for you, and whether it can be trusted. Built for Nigeria first.</p></div>
+    <div><h4>Product</h4><a href="how-it-works.html">How it works</a><a href="features.html">Features</a><a href="our-data.html">Our data &amp; AI</a><a href="download.html">Download</a></div>
+    <div><h4>Company</h4><a href="about.html">About</a><a href="contact.html">Contact</a><a href="safety.html">Safety &amp; compliance</a></div>
+    <div><h4>Legal</h4><a href="privacy.html">Privacy Policy</a><a href="terms.html">Terms &amp; Conditions</a><a href="safety.html#medical">Medical disclaimer</a><a href="safety.html#ai">How we use AI</a></div>
+  </div>
+  <div class="foot-note">
+    <span>&copy; <span data-year>2026</span> NutriScan. Powered by <strong>JCN</strong>.</span>
+    <span>Educational information only. Not medical advice. Not affiliated with NAFDAC, WHO or Google.</span>
+  </div>
+</div></footer>
+<script src="assets/site.js" defer></script>
 </body>
 </html>

@@ -10,8 +10,10 @@ cd "$(dirname "$0")/.."
 (cd android && ./gradlew :app:assembleDebug)
 cp android/app/build/outputs/apk/debug/app-debug.apk download/nutriscan.apk
 
-# Keep the version label on the page in step with the app.
+# The download page reads its version, size, date and SHA-256 from release.json, so write it
+# from the file being published, then rebuild the pages.
 VERSION=$(grep -oP 'versionName = "\K[^"]+' android/app/build.gradle.kts)
-sed -i -E "s/v[0-9]+\.[0-9]+\.[0-9]+ · Beta build/v${VERSION} · Beta build/" download/index.html
+python site/release.py download/nutriscan.apk "$VERSION"
+python site/build.py
 
 vercel --prod --yes --cwd download

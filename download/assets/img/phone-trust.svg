@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 610" role="img" aria-label="How NutriScan shows how far data can be trusted" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif">
+<defs>
+  <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E1C766"/><stop offset="1" stop-color="#B8860B"/></linearGradient>
+  <clipPath id="scr"><rect x="10" y="10" width="280" height="590" rx="34"/></clipPath>
+</defs>
+<rect width="300" height="610" rx="44" fill="#0E1412"/>
+<rect x="10" y="10" width="280" height="590" rx="34" fill="#F7F6F2"/>
+<g clip-path="url(#scr)">
+<path d="M30 70 L22 62 L30 54" fill="none" stroke="#171C1A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><text x="46" y="68" font-size="16" fill="#171C1A" font-weight="600" text-anchor="start" >Data trust</text>
+<rect x="20" y="86" width="260" height="190" rx="14" fill="#E6F3EC" stroke="#BFE0CE"/>
+<circle cx="42" cy="112" r="10" fill="#1B8A5A"/><path d="M37 112 l3.5 3.5 l6 -7" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="60" y="118" font-size="16" fill="#0E6B4F" font-weight="700" text-anchor="start" >Corroborated</text>
+<text x="34" y="146" font-size="10.5" fill="#171C1A" font-weight="400" text-anchor="start" >• Open Food Facts agrees on 3 of 3 values</text>
+<text x="34" y="164" font-size="10.5" fill="#171C1A" font-weight="400" text-anchor="start" >• Matched by name, brand and country</text>
+<text x="34" y="182" font-size="10.5" fill="#171C1A" font-weight="400" text-anchor="start" >• NAFDAC number captured, not yet confirmed</text>
+<text x="34" y="200" font-size="10.5" fill="#171C1A" font-weight="400" text-anchor="start" >• Values you read from the pack: 1</text>
+<rect x="32" y="216" width="236" height="24" rx="12" fill="none" stroke="#0E6B4F"/>
+<text x="150" y="232" font-size="10" fill="#0E6B4F" font-weight="600" text-anchor="middle" >Source: Open Food Facts</text>
+<text x="34" y="262" font-size="9.5" fill="#5D6A64" font-weight="400" text-anchor="start" >Last checked today</text>
+<text x="24" y="306" font-size="12" fill="#171C1A" font-weight="700" text-anchor="start" >The four levels</text>
+<rect x="20" y="322" width="260" height="36" rx="10" fill="#fff" stroke="#DCE0D8"/>
+<circle cx="38" cy="340" r="6" fill="#0E6B4F"/>
+<text x="52" y="338" font-size="11.5" fill="#171C1A" font-weight="700" text-anchor="start" >Verified</text>
+<text x="52" y="351" font-size="9.5" fill="#5D6A64" font-weight="400" text-anchor="start" >NAFDAC number confirmed</text>
+<rect x="20" y="366" width="260" height="36" rx="10" fill="#fff" stroke="#DCE0D8"/>
+<circle cx="38" cy="384" r="6" fill="#1B8A5A"/>
+<text x="52" y="382" font-size="11.5" fill="#171C1A" font-weight="700" text-anchor="start" >Corroborated</text>
+<text x="52" y="395" font-size="9.5" fill="#5D6A64" font-weight="400" text-anchor="start" >Two independent sources agree</text>
+<rect x="20" y="410" width="260" height="36" rx="10" fill="#fff" stroke="#DCE0D8"/>
+<circle cx="38" cy="428" r="6" fill="#2E7DAF"/>
+<text x="52" y="426" font-size="11.5" fill="#171C1A" font-weight="700" text-anchor="start" >Sourced</text>
+<text x="52" y="439" font-size="9.5" fill="#5D6A64" font-weight="400" text-anchor="start" >One source we can cite</text>
+<rect x="20" y="454" width="260" height="36" rx="10" fill="#fff" stroke="#DCE0D8"/>
+<circle cx="38" cy="472" r="6" fill="#7A8680"/>
+<text x="52" y="470" font-size="11.5" fill="#171C1A" font-weight="700" text-anchor="start" >Unverified</text>
+<text x="52" y="483" font-size="9.5" fill="#5D6A64" font-weight="400" text-anchor="start" >Not enough proof yet</text>
+<rect x="20" y="510" width="260" height="56" rx="12" fill="#FFF4DC" stroke="#F0D9A0"/>
+<text x="32" y="532" font-size="11" fill="#171C1A" font-weight="700" text-anchor="start" >Votes alone never change a value.</text>
+<text x="32" y="548" font-size="10" fill="#5D6A64" font-weight="400" text-anchor="start" >An independent source or our team must agree.</text>
+</g>
+<rect x="124" y="18" width="52" height="14" rx="7" fill="#0E1412"/>
+<rect x="110" y="588" width="80" height="4" rx="2" fill="#CFD3CC"/>
+</svg>

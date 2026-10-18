@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 610" role="img" aria-label="The barcode scanner" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif">
+<defs>
+  <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E1C766"/><stop offset="1" stop-color="#B8860B"/></linearGradient>
+  <clipPath id="scr"><rect x="10" y="10" width="280" height="590" rx="34"/></clipPath>
+</defs>
+<rect width="300" height="610" rx="44" fill="#0E1412"/>
+<rect x="10" y="10" width="280" height="590" rx="34" fill="#10211A"/>
+<g clip-path="url(#scr)">
+<rect x="10" y="10" width="280" height="590" fill="#0A130F"/>
+<rect x="10" y="150" width="280" height="300" fill="#16251E"/>
+<rect x="24" y="310" width="38" height="120" rx="5" fill="#22372D"/>
+<rect x="74" y="280" width="38" height="150" rx="5" fill="#2A4236"/>
+<rect x="200" y="320" width="38" height="110" rx="5" fill="#22372D"/>
+<rect x="250" y="290" width="38" height="140" rx="5" fill="#2A4236"/>
+<path d="M52 190 V168 H74" fill="none" stroke="#E1C766" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M226 168 H248 V190" fill="none" stroke="#E1C766" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M52 410 V432 H74" fill="none" stroke="#E1C766" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M226 432 H248 V410" fill="none" stroke="#E1C766" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="92" y="260" width="3" height="70" fill="#F7F6F2"/>
+<rect x="97" y="260" width="2" height="70" fill="#F7F6F2"/>
+<rect x="101" y="260" width="5" height="70" fill="#F7F6F2"/>
+<rect x="108" y="260" width="2" height="70" fill="#F7F6F2"/>
+<rect x="112" y="260" width="3" height="70" fill="#F7F6F2"/>
+<rect x="117" y="260" width="6" height="70" fill="#F7F6F2"/>
+<rect x="125" y="260" width="2" height="70" fill="#F7F6F2"/>
+<rect x="129" y="260" width="3" height="70" fill="#F7F6F2"/>
+<rect x="134" y="260" width="4" height="70" fill="#F7F6F2"/>
+<rect x="140" y="260" width="2" height="70" fill="#F7F6F2"/>
+<rect x="144" y="260" width="6" height="70" fill="#F7F6F2"/>
+<rect x="152" y="260" width="3" height="70" fill="#F7F6F2"/>
+<rect x="157" y="260" width="2" height="70" fill="#F7F6F2"/>
+<rect x="161" y="260" width="5" height="70" fill="#F7F6F2"/>
+<rect x="168" y="260" width="3" height="70" fill="#F7F6F2"/>
+<rect x="173" y="260" width="2" height="70" fill="#F7F6F2"/>
+<rect x="177" y="260" width="4" height="70" fill="#F7F6F2"/>
+<rect x="183" y="260" width="3" height="70" fill="#F7F6F2"/>
+<rect x="188" y="260" width="5" height="70" fill="#F7F6F2"/>
+<rect x="64" y="298" width="172" height="2.5" rx="1.2" fill="#FF5A4F" opacity=".9"><animate attributeName="y" values="206;392;206" dur="3.4s" repeatCount="indefinite"/></rect>
+<text x="150" y="112" font-size="17" fill="#fff" font-weight="600" text-anchor="middle" >Scan a barcode</text>
+<text x="150" y="134" font-size="11" fill="#9DB1A7" font-weight="400" text-anchor="middle" >Hold steady, we'll do the rest</text>
+<rect x="60" y="480" width="180" height="40" rx="20" fill="none" stroke="#5B7A6B"/>
+<text x="150" y="505" font-size="11.5" fill="#CFE0D6" font-weight="500" text-anchor="middle" >Type the barcode instead</text>
+</g>
+<rect x="124" y="18" width="52" height="14" rx="7" fill="#0E1412"/>
+<rect x="110" y="588" width="80" height="4" rx="2" fill="#3b4a43"/>
+</svg>

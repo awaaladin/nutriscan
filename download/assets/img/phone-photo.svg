@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 610" role="img" aria-label="Adding an unknown product with two photos" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif">
+<defs>
+  <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E1C766"/><stop offset="1" stop-color="#B8860B"/></linearGradient>
+  <clipPath id="scr"><rect x="10" y="10" width="280" height="590" rx="34"/></clipPath>
+</defs>
+<rect width="300" height="610" rx="44" fill="#0E1412"/>
+<rect x="10" y="10" width="280" height="590" rx="34" fill="#F7F6F2"/>
+<g clip-path="url(#scr)">
+<path d="M30 70 L22 62 L30 54" fill="none" stroke="#171C1A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><text x="46" y="68" font-size="16" fill="#171C1A" font-weight="600" text-anchor="start" >Help us add this product</text>
+<text x="24" y="106" font-size="13" fill="#171C1A" font-weight="700" text-anchor="start" >We couldn't find this one yet.</text>
+<text x="24" y="124" font-size="11" fill="#5D6A64" font-weight="400" text-anchor="start" >Two quick photos add it for everyone.</text>
+<rect x="20" y="140" width="124" height="150" rx="14" fill="#fff" stroke="#DCE0D8"/>
+<rect x="50" y="160" width="64" height="86" rx="8" fill="#F3E3B6" stroke="#B8860B" stroke-width="1.5"/>
+<circle cx="82" cy="196" r="12" fill="url(#gold)"/>
+<text x="82" y="270" font-size="10.5" fill="#171C1A" font-weight="600" text-anchor="middle" >1. Front of pack</text>
+<rect x="156" y="140" width="124" height="150" rx="14" fill="#fff" stroke="#DCE0D8"/>
+<rect x="174" y="158" width="88" height="96" rx="6" fill="#fff" stroke="#9AA59F"/>
+<rect x="182" y="168" width="58" height="5" rx="2.5" fill="#C9D1CB"/>
+<rect x="248" y="168" width="8" height="5" rx="2.5" fill="#C9D1CB"/>
+<rect x="182" y="181" width="64" height="5" rx="2.5" fill="#C9D1CB"/>
+<rect x="248" y="181" width="8" height="5" rx="2.5" fill="#C9D1CB"/>
+<rect x="182" y="194" width="70" height="5" rx="2.5" fill="#C9D1CB"/>
+<rect x="248" y="194" width="8" height="5" rx="2.5" fill="#C9D1CB"/>
+<rect x="182" y="207" width="58" height="5" rx="2.5" fill="#C9D1CB"/>
+<rect x="248" y="207" width="8" height="5" rx="2.5" fill="#C9D1CB"/>
+<rect x="182" y="220" width="64" height="5" rx="2.5" fill="#C9D1CB"/>
+<rect x="248" y="220" width="8" height="5" rx="2.5" fill="#C9D1CB"/>
+<rect x="182" y="233" width="70" height="5" rx="2.5" fill="#C9D1CB"/>
+<rect x="248" y="233" width="8" height="5" rx="2.5" fill="#C9D1CB"/>
+<text x="218" y="270" font-size="10.5" fill="#171C1A" font-weight="600" text-anchor="middle" >2. Nutrition table</text>
+<rect x="20" y="306" width="260" height="92" rx="14" fill="#FFF4DC" stroke="#F0D9A0"/>
+<text x="32" y="326" font-size="9" fill="#C77A00" font-weight="700" text-anchor="start" letter-spacing="1">WHAT HAPPENS NEXT</text>
+<text x="32" y="346" font-size="11" fill="#171C1A" font-weight="400" text-anchor="start" >AI reads the label. You check it.</text>
+<text x="32" y="362" font-size="11" fill="#171C1A" font-weight="400" text-anchor="start" >It's marked “Estimated” until it's confirmed,</text>
+<text x="32" y="378" font-size="11" fill="#171C1A" font-weight="400" text-anchor="start" >and saved so the next scan is instant.</text>
+<rect x="20" y="420" width="260" height="46" rx="23" fill="#0E6B4F"/>
+<text x="150" y="448" font-size="14" fill="#fff" font-weight="600" text-anchor="middle" >Take photo</text>
+<text x="150" y="494" font-size="11.5" fill="#0E6B4F" font-weight="600" text-anchor="middle" >Or type the nutrition values</text>
+</g>
+<rect x="124" y="18" width="52" height="14" rx="7" fill="#0E1412"/>
+<rect x="110" y="588" width="80" height="4" rx="2" fill="#CFD3CC"/>
+</svg>

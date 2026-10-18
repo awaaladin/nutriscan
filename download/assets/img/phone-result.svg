@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 610" role="img" aria-label="A product result with health score, personal advice and data trust" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif">
+<defs>
+  <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E1C766"/><stop offset="1" stop-color="#B8860B"/></linearGradient>
+  <clipPath id="scr"><rect x="10" y="10" width="280" height="590" rx="34"/></clipPath>
+</defs>
+<rect width="300" height="610" rx="44" fill="#0E1412"/>
+<rect x="10" y="10" width="280" height="590" rx="34" fill="#F7F6F2"/>
+<g clip-path="url(#scr)">
+<path d="M30 70 L22 62 L30 54" fill="none" stroke="#171C1A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><text x="46" y="68" font-size="16" fill="#171C1A" font-weight="600" text-anchor="start" >Product</text>
+<text x="24" y="108" font-size="18" fill="#171C1A" font-weight="700" text-anchor="start" >Golden Oat Biscuits</text>
+<text x="24" y="126" font-size="12" fill="#5D6A64" font-weight="400" text-anchor="start" >Sample Foods</text>
+<text x="24" y="142" font-size="10" fill="#5D6A64" font-weight="400" text-anchor="start" >Barcode 6150000000000</text>
+<rect x="24" y="154" width="88" height="26" rx="13" fill="#FBE9C0"/>
+<text x="68" y="172" font-size="12" fill="#C77A00" font-weight="700" text-anchor="middle" >Moderate</text>
+<text x="124" y="173" font-size="16" fill="#171C1A" font-weight="700" text-anchor="start" >5/10</text>
+<text x="168" y="172" font-size="10.5" fill="#171C1A" font-weight="400" text-anchor="start" >Diabetic risk: Medium</text>
+<rect x="20" y="192" width="260" height="80" rx="14" fill="#FFF4DC" stroke="#F0D9A0"/>
+<text x="32" y="210" font-size="9" fill="#C77A00" font-weight="700" text-anchor="start" letter-spacing="1">FOR YOU</text>
+<text x="32" y="228" font-size="11" fill="#171C1A" font-weight="400" text-anchor="start" >Watch the sugar: 11 g per 100 g is</text>
+<text x="32" y="243" font-size="11" fill="#171C1A" font-weight="400" text-anchor="start" >high if you manage diabetes.</text>
+<text x="32" y="262" font-size="10" fill="#0E6B4F" font-weight="600" text-anchor="start" >Allergen check: none found</text>
+<rect x="20" y="282" width="260" height="124" rx="14" fill="#E6F3EC" stroke="#BFE0CE"/>
+<circle cx="40" cy="302" r="8" fill="#1B8A5A"/><path d="M36 302 l3 3 l5 -6" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="54" y="307" font-size="14" fill="#0E6B4F" font-weight="700" text-anchor="start" >Corroborated</text>
+<text x="34" y="328" font-size="10.5" fill="#171C1A" font-weight="400" text-anchor="start" >• 2 independent sources agree</text>
+<text x="34" y="344" font-size="10.5" fill="#171C1A" font-weight="400" text-anchor="start" >• NAFDAC number captured</text>
+<text x="34" y="360" font-size="10.5" fill="#171C1A" font-weight="400" text-anchor="start" >• Source: Open Food Facts</text>
+<rect x="32" y="372" width="236" height="24" rx="12" fill="none" stroke="#0E6B4F"/>
+<text x="150" y="388" font-size="10" fill="#0E6B4F" font-weight="600" text-anchor="middle" >Something wrong? Report a correction</text>
+<text x="24" y="430" font-size="12" fill="#171C1A" font-weight="700" text-anchor="start" >Per 100 g</text>
+<text x="24" y="458" font-size="10.5" fill="#171C1A" font-weight="400" text-anchor="start" >Sugar</text>
+<text x="94" y="458" font-size="10.5" fill="#5D6A64" font-weight="400" text-anchor="start" >11 g</text>
+<rect x="140" y="450" width="130" height="8" rx="4" fill="#E4E7E2"/>
+<rect x="140" y="450" width="71" height="8" rx="4" fill="#C77A00"/>
+<text x="24" y="484" font-size="10.5" fill="#171C1A" font-weight="400" text-anchor="start" >Saturated fat</text>
+<text x="94" y="484" font-size="10.5" fill="#5D6A64" font-weight="400" text-anchor="start" >4 g</text>
+<rect x="140" y="476" width="130" height="8" rx="4" fill="#E4E7E2"/>
+<rect x="140" y="476" width="45" height="8" rx="4" fill="#1B8A5A"/>
+<text x="24" y="510" font-size="10.5" fill="#171C1A" font-weight="400" text-anchor="start" >Sodium</text>
+<text x="94" y="510" font-size="10.5" fill="#5D6A64" font-weight="400" text-anchor="start" >320 mg</text>
+<rect x="140" y="502" width="130" height="8" rx="4" fill="#E4E7E2"/>
+<rect x="140" y="502" width="39" height="8" rx="4" fill="#1B8A5A"/>
+<rect x="20" y="540" width="124" height="38" rx="19" fill="none" stroke="#0E6B4F" stroke-width="1.5"/>
+<text x="82" y="563" font-size="12" fill="#0E6B4F" font-weight="600" text-anchor="middle" >Read aloud</text>
+<rect x="152" y="540" width="128" height="38" rx="19" fill="#0E6B4F"/>
+<text x="216" y="563" font-size="12" fill="#fff" font-weight="600" text-anchor="middle" >Ask NutriScan</text>
+</g>
+<rect x="124" y="18" width="52" height="14" rx="7" fill="#0E1412"/>
+<rect x="110" y="588" width="80" height="4" rx="2" fill="#CFD3CC"/>
+</svg>

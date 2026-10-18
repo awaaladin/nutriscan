@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 440" role="img" aria-label="Two packs that look identical on a shelf, with a phone checking them" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif">
+<defs><linearGradient id="beam" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#E1C766" stop-opacity=".55"/><stop offset="1" stop-color="#E1C766" stop-opacity="0"/></linearGradient>
+<linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E1C766"/><stop offset="1" stop-color="#B8860B"/></linearGradient></defs>
+<rect width="840" height="440" rx="24" fill="#123D2C"/>
+<circle cx="640" cy="90" r="200" fill="#1B5A41" opacity=".35"/>
+<rect x="60" y="320" width="720" height="14" rx="7" fill="#0B2E22"/>
+<rect x="60" y="334" width="720" height="60" fill="#0E3626" opacity=".6"/>
+<g transform="translate(120 150)"><rect width="110" height="170" rx="10" fill="#C77A00"/><rect y="46" width="110" height="64" fill="#E3A52F"/><circle cx="55" cy="78" r="18" fill="#E1C766" opacity=".9"/><text x="55" y="140" font-size="12" font-weight="700" fill="#fff" text-anchor="middle" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif">Golden Oat</text><rect x="20" y="152" width="70" height="6" rx="3" fill="#fff" opacity=".5"/></g>
+<g transform="translate(260 150)"><rect width="110" height="170" rx="10" fill="#C77A00"/><rect y="46" width="110" height="64" fill="#E3A52F"/><circle cx="55" cy="78" r="18" fill="#E1C766" opacity=".9"/><text x="55" y="140" font-size="12" font-weight="700" fill="#fff" text-anchor="middle" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif">Golden Oat</text><rect x="20" y="152" width="70" height="6" rx="3" fill="#fff" opacity=".5"/></g>
+<g transform="translate(400 150)"><rect width="110" height="170" rx="10" fill="#2E7DAF"/><rect y="46" width="110" height="64" fill="#5AA0CC"/><circle cx="55" cy="78" r="18" fill="#E1C766" opacity=".9"/><text x="55" y="140" font-size="12" font-weight="700" fill="#fff" text-anchor="middle" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif">Sweet Milk</text><rect x="20" y="152" width="70" height="6" rx="3" fill="#fff" opacity=".5"/></g>
+<g transform="translate(560 120)">
+  <path d="M60 230 L-40 300 L190 300 Z" fill="url(#beam)" opacity=".0"/>
+  <rect x="20" y="40" width="130" height="250" rx="22" fill="#0E1412" stroke="#2c3b34" stroke-width="3"/>
+  <rect x="28" y="52" width="114" height="226" rx="16" fill="#F7F6F2"/>
+  <circle cx="85" cy="112" r="26" fill="url(#gold)"/>
+  <path d="M73 100h8v-4h-12v12h4zM97 100h-8v-4h12v12h-4zM73 124h8v4h-12v-12h4zM97 124h-8v4h12v-12h-4z" fill="#0B2E22"/>
+  <rect x="42" y="158" width="86" height="12" rx="6" fill="#E6F3EC"/>
+  <rect x="42" y="180" width="86" height="12" rx="6" fill="#FBE3E0"/>
+  <rect x="42" y="202" width="60" height="12" rx="6" fill="#FFF4DC"/>
+  <rect x="42" y="236" width="86" height="26" rx="13" fill="#0E6B4F"/>
+</g>
+<path d="M545 250 C500 220 380 190 320 150" fill="none" stroke="#E1C766" stroke-width="3" stroke-dasharray="3 9" stroke-linecap="round"/>
+<g transform="translate(318 60)"><rect width="150" height="54" rx="27" fill="#FBE3E0"/><circle cx="27" cy="27" r="12" fill="#C0392B"/><path d="M27 20v9M27 33v.5" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/><text x="50" y="25" font-size="12" font-weight="700" fill="#C0392B">Reported fake</text><text x="50" y="40" font-size="10" fill="#7a3a33">by 4 people near you</text></g>
+<g transform="translate(150 60)"><rect width="140" height="54" rx="27" fill="#E6F3EC"/><circle cx="27" cy="27" r="12" fill="#1B8A5A"/><path d="M21 27l4.5 4.5 8-9" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><text x="50" y="25" font-size="12" font-weight="700" fill="#0E6B4F">NAFDAC number</text><text x="50" y="40" font-size="10" fill="#3d6b58">captured</text></g>
+</svg>
