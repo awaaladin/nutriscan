@@ -1,8 +1,11 @@
 """Users correcting the data set, safely.
 
-A correction is only a vote. It is applied when the weighted agreement of credible,
-independent people is high enough -- so users genuinely improve the data, but no
-single account (or a pile of brand-new throwaway accounts) can rewrite it.
+A correction is only a vote, and votes can be manipulated, so they never change the
+data on their own. A correction is applied only when BOTH hold:
+  1. enough credible people agree (weighted by account age / reviewer status), and
+  2. an independent source (Open Food Facts, cited AI web research, a label photo)
+     backs the same value.
+Otherwise it stays open for an admin to review. An admin can always accept directly.
 """
 from statistics import median
 from typing import List, Optional, Tuple
@@ -71,6 +74,23 @@ def apply_value(product: Product, field: str, value) -> None:
     product.save()
 
 
+INDEPENDENT_SOURCES = ("open_food_facts", "web_ai", "label_photo")
+
+
+def _supported(product: Product, field: str, value) -> bool:
+    """Whether a source other than users' votes holds (about) the same value."""
+    for ev in product.evidence.filter(source_type__in=INDEPENDENT_SOURCES).exclude(status=ProductEvidence.Status.REFERENCE):
+        theirs = (ev.facts or {}).get(field)
+        if theirs is None:
+            continue
+        try:
+            if _same(field, value, float(theirs) if field in KEY_FIELDS else theirs):
+                return True
+        except (TypeError, ValueError):
+            continue
+    return False
+
+
 def _consensus(product: Product, field: str) -> Optional[Tuple[object, List[DataCorrection]]]:
     """The best-supported correction for `field` if its weighted support is enough."""
     open_ones = list(
@@ -88,7 +108,10 @@ def _consensus(product: Product, field: str) -> Optional[Tuple[object, List[Data
     if not best or best_weight < ACCEPT_WEIGHT:
         return None
     values = [_parse(field, c) for c in best]
-    return (round(median(values), 2) if field in KEY_FIELDS else values[0]), best
+    agreed = round(median(values), 2) if field in KEY_FIELDS else values[0]
+    if not _supported(product, field, agreed):
+        return None  # popular is not the same as true: wait for an independent source or an admin
+    return agreed, best
 
 
 def _parse(field: str, correction: DataCorrection):

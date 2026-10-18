@@ -161,7 +161,7 @@ agree), `sourced` (one cited source) or `unverified`.
   conflicts become open corrections for review. AI web research is used only when live
   web search ran and cited pages (needs Google AI billing); memory-only answers are never evidence.
 - Users report corrections (`POST /api/products/<barcode>/corrections/`). They are votes,
-  weighted by account age and reviewer status, applied at weight 3.0 or by an admin.
+  weighted by account age and reviewer status, and NEVER enough alone (votes can be manipulated): applied only when credible users agree AND an independent source backs the same value, or an admin accepts.
 - `GET /api/products/search/?q=` searches the data set by name, brand, barcode or NAFDAC.
 - The assistant retrieves **approved** `KnowledgeEntry` rows ("reviewed answers"). Build
   candidates with `manage.py build_knowledge_base` (consented, thumbs-up chats only), approve

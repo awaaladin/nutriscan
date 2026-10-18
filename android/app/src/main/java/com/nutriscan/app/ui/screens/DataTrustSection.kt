@@ -159,7 +159,7 @@ fun CorrectionDialog(repository: NutriScanRepository, barcode: String, onDismiss
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 Text(
-                    "Which value is wrong? Copy the right one from the pack. We apply it once enough people agree.",
+                    "Which value is wrong? Copy the right one from the pack. We check it against other sources or our team before changing anything.",
                     style = MaterialTheme.typography.bodySmall,
                 )
                 Spacer(Modifier.height(8.dp))

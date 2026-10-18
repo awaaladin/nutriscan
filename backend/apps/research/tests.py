@@ -253,6 +253,12 @@ class TrustTests(APITestCase):
         self.assertIn("level", client.get(reverse("product-detail", args=[p.barcode])).data["data_trust"])
 
 
+def source_says(p, field, value, source_type="open_food_facts"):
+    from apps.research.models import ProductEvidence
+    ProductEvidence.objects.create(product=p, source_type=source_type, source_ref="x", source_label="src",
+                                   facts={field: value}, match_score=1.0, status="agrees")
+
+
 class CorrectionTests(APITestCase):
     def test_validation_messages_are_for_users(self):
         p = product(sugar_g=10.0)
@@ -282,8 +288,35 @@ class CorrectionTests(APITestCase):
         self.assertFalse(applied)
         self.assertEqual(p.sugar_g, 10.0)
 
-    def test_three_established_users_agreeing_apply_the_correction(self):
+    def test_many_established_users_cannot_change_data_without_an_independent_source(self):
         p = product(sugar_g=10.0)
+        for i in range(10):
+            _, applied = corrections.submit(user(f"crowd{i}"), p, "sugar_g", "60")
+            self.assertFalse(applied)
+        p.refresh_from_db()
+        self.assertEqual(p.sugar_g, 10.0)
+        self.assertEqual(DataCorrection.objects.filter(product=p, status="open").count(), 10)
+
+    def test_a_source_that_disagrees_with_the_crowd_does_not_back_it(self):
+        p = product(sugar_g=10.0)
+        source_says(p, "sugar_g", 12.0)
+        for i in range(4):
+            corrections.submit(user(f"x{i}"), p, "sugar_g", "60")
+        p.refresh_from_db()
+        self.assertEqual(p.sugar_g, 10.0)
+
+    def test_reference_only_sources_do_not_back_a_correction(self):
+        p = product(sugar_g=10.0)
+        source_says(p, "sugar_g", 30.0)
+        p.evidence.update(status="reference")
+        for i in range(4):
+            corrections.submit(user(f"r{i}"), p, "sugar_g", "30")
+        p.refresh_from_db()
+        self.assertEqual(p.sugar_g, 10.0)
+
+    def test_three_established_users_agreeing_with_a_source_apply_the_correction(self):
+        p = product(sugar_g=10.0)
+        source_says(p, "sugar_g", 30.0)
         results = [corrections.submit(user(f"u{i}"), p, "sugar_g", v)[1] for i, v in enumerate(["30", "31", "29.5"])]
         p.refresh_from_db()
         self.assertEqual(results, [False, False, True])
@@ -298,8 +331,14 @@ class CorrectionTests(APITestCase):
         p.refresh_from_db()
         self.assertEqual(p.sugar_g, 10.0)  # 8 x 0.25 = 2.0, under the threshold
 
-    def test_a_vetted_reviewer_alone_is_enough(self):
+    def test_a_vetted_reviewer_alone_is_not_enough_without_a_source(self):
         p = product(sugar_g=10.0)
+        _, applied = corrections.submit(user("pharm", is_verified_reviewer=True), p, "sugar_g", "30")
+        self.assertFalse(applied)
+
+    def test_a_vetted_reviewer_plus_an_independent_source_is_enough(self):
+        p = product(sugar_g=10.0)
+        source_says(p, "sugar_g", 30.0)
         _, applied = corrections.submit(user("pharm", is_verified_reviewer=True), p, "sugar_g", "30")
         self.assertTrue(applied)
 
@@ -321,6 +360,7 @@ class CorrectionTests(APITestCase):
 
     def test_text_fields_need_identical_values(self):
         p = product()
+        source_says(p, "nafdac_number", "A4-1234", source_type="label_photo")
         outcomes = [corrections.submit(user(f"n{i}"), p, "nafdac_number", v)[1] for i, v in enumerate(["a4-1234", "A4-1234", " A4-1234 "])]
         p.refresh_from_db()
         self.assertEqual(outcomes[-1], True)
@@ -329,6 +369,7 @@ class CorrectionTests(APITestCase):
     def test_a_research_conflict_plus_two_users_is_enough(self):
         p = product(sugar_g=2.0)
         DataCorrection.objects.create(product=p, user=None, field="sugar_g", current_value="2.0", suggested_value="39.0")
+        source_says(p, "sugar_g", 39.0)
         corrections.submit(user("a"), p, "sugar_g", "39")
         _, applied = corrections.submit(user("b"), p, "sugar_g", "40")
         self.assertTrue(applied)

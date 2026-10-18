@@ -92,9 +92,9 @@ class CorrectionView(APIView):
             {
                 "applied": applied,
                 "detail": (
-                    "Thanks -- enough people agreed, so the data has been updated."
+                    "Thanks -- people and an independent source agreed, so the data has been updated."
                     if applied
-                    else "Thanks. We'll update this once enough people confirm it, or our team reviews it."
+                    else "Thanks. We check every report against independent sources or our team before changing anything."
                 ),
                 "trust": data_trust(product),
             },
