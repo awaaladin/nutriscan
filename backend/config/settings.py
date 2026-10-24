@@ -198,3 +198,18 @@ PLAY_PRODUCT_PLANS = {
     "nutriscan_pro_monthly": "monthly",
     "nutriscan_pro_yearly": "yearly",
 }
+
+# Paystack: prepaid Pro bought on the web (see apps.subscriptions.paystack). The account is
+# shared with other apps; NutriScan's references start with NUTRISCAN-. Without a key the
+# checkout endpoint returns 503 and grants nothing. PAYSTACK_API is accepted as an alias: the
+# shared key is stored under that name in the local .env (Choropia reads it the same way).
+PAYSTACK_SECRET_KEY = os.environ.get("PAYSTACK_SECRET_KEY", "") or os.environ.get("PAYSTACK_API", "")
+PAYSTACK_BASE_URL = os.environ.get("PAYSTACK_BASE_URL", "https://api.paystack.co")
+# This API's public URL: Paystack sends the payer back to /api/subscription/paystack/return/.
+PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "https://backend-flame-theta-28.vercel.app")
+# Whole naira per plan, and how long one payment lasts.
+PAYSTACK_PLAN_PRICES_NGN = {
+    "monthly": int(os.environ.get("PRO_MONTHLY_PRICE_NGN", "1500")),
+    "yearly": int(os.environ.get("PRO_YEARLY_PRICE_NGN", "15000")),
+}
+PAYSTACK_PLAN_DAYS = {"monthly": 30, "yearly": 365}

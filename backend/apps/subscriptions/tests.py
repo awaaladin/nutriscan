@@ -1,7 +1,11 @@
+import hashlib
+import hmac
+import json
 from datetime import timedelta
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.test import override_settings
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
@@ -152,3 +156,97 @@ class ProStatusTests(APITestCase):
         with patch(SERVICE_VERIFIER, return_value=FakeVerifier(error=PlayNotConfigured())):
             resp = self.client.get(reverse("preferences"))
         self.assertFalse(resp.data["is_pro"])
+
+
+PAYSTACK_SECRET = "sk_test_unit"
+
+
+def _charge(reference, amount_kobo=150_000):
+    return {"id": 777, "reference": reference, "amount": amount_kobo, "status": "success", "currency": "NGN"}
+
+
+@override_settings(PAYSTACK_SECRET_KEY=PAYSTACK_SECRET, PUBLIC_BASE_URL="https://api.nutriscan.test")
+class PaystackTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="ada", email="ada@example.com", password="strongpassword123")
+        self.client.force_authenticate(self.user)
+
+    def checkout(self, plan="monthly"):
+        with patch("apps.subscriptions.paystack.initialize_transaction",
+                   return_value={"authorization_url": "https://checkout.paystack.com/x"}) as init:
+            response = self.client.post(reverse("paystack-checkout"), {"plan": plan}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        return response.data["reference"], init
+
+    def webhook(self, payload, secret=PAYSTACK_SECRET):
+        body = json.dumps(payload).encode()
+        sig = hmac.new(secret.encode(), body, hashlib.sha512).hexdigest()
+        return self.client.post(reverse("paystack-webhook"), data=body, content_type="application/json",
+                                HTTP_X_PAYSTACK_SIGNATURE=sig)
+
+    def test_reference_and_metadata_identify_nutriscan(self):
+        reference, init = self.checkout("yearly")
+        self.assertRegex(reference, r"^NUTRISCAN-PROYEAR-\d{8}-[0-9A-F]{12}$")
+        kwargs = init.call_args.kwargs
+        self.assertEqual(kwargs["amount_kobo"], 1_500_000)
+        self.assertEqual(kwargs["callback_url"], "https://api.nutriscan.test/api/subscription/paystack/return/")
+        self.assertEqual(kwargs["metadata"]["app"], "NUTRISCAN")
+        self.assertEqual(kwargs["metadata"]["custom_fields"][1]["value"], "NutriScan Pro (Yearly)")
+
+    def test_webhook_grants_pro_once(self):
+        reference, _ = self.checkout()
+        payload = {"event": "charge.success", "data": _charge(reference)}
+        self.assertEqual(self.webhook(payload).status_code, 200)
+        first = Subscription.objects.get(user=self.user).expires_at
+        self.webhook(payload)  # re-delivery
+        self.assertEqual(Subscription.objects.get(user=self.user).expires_at, first)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.is_pro)
+        self.assertAlmostEqual((first - timezone.now()).days, 29, delta=1)
+
+    def test_renewing_early_extends_from_current_expiry(self):
+        Subscription.objects.create(user=self.user, status="active", expires_at=timezone.now() + timedelta(days=10))
+        reference, _ = self.checkout()
+        self.webhook({"event": "charge.success", "data": _charge(reference)})
+        remaining = Subscription.objects.get(user=self.user).expires_at - timezone.now()
+        self.assertAlmostEqual(remaining.days, 39, delta=1)
+
+    def test_bad_signature_grants_nothing(self):
+        reference, _ = self.checkout()
+        response = self.webhook({"event": "charge.success", "data": _charge(reference)}, secret="wrong")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.is_pro)
+
+    def test_short_payment_grants_nothing(self):
+        reference, _ = self.checkout()
+        self.webhook({"event": "charge.success", "data": _charge(reference, amount_kobo=100)})
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.is_pro)
+
+    def test_other_apps_are_acknowledged(self):
+        response = self.webhook({"event": "charge.success", "data": _charge("CHOROPIA-ORDER-20261023-AB")})
+        self.assertEqual(response.status_code, 200)
+
+    def test_verify_grants_pro_without_webhook(self):
+        reference, _ = self.checkout()
+        with patch("apps.subscriptions.paystack.verify_transaction", return_value=_charge(reference)):
+            response = self.client.post(reverse("paystack-verify", args=[reference]))
+        self.assertEqual(response.data["status"], "success")
+        self.assertTrue(response.data["is_pro"])
+
+    def test_not_configured_fails_closed(self):
+        with override_settings(PAYSTACK_SECRET_KEY=""):
+            response = self.client.post(reverse("paystack-checkout"), {"plan": "monthly"}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
+
+    def test_paystack_pro_survives_until_expiry_then_lapses(self):
+        reference, _ = self.checkout()
+        self.webhook({"event": "charge.success", "data": _charge(reference)})
+        self.user.refresh_from_db()
+        self.client.force_authenticate(self.user)
+        self.assertEqual(self.client.get(reverse("pro-insights")).status_code, status.HTTP_200_OK)
+
+        Subscription.objects.filter(user=self.user).update(expires_at=timezone.now() - timedelta(minutes=1))
+        self.assertEqual(self.client.get(reverse("pro-insights")).status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(Subscription.objects.get(user=self.user).status, "expired")

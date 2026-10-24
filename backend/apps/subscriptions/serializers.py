@@ -9,6 +9,10 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         fields = ["plan", "status", "expires_at"]
 
 
+class PaystackCheckoutSerializer(serializers.Serializer):
+    plan = serializers.ChoiceField(choices=Subscription.Plan.choices)
+
+
 class VerifyPurchaseSerializer(serializers.Serializer):
     # The plan is derived server-side from the product Google reports, so the
     # client can't claim a plan it didn't pay for.
