@@ -26,6 +26,7 @@ from apps.products.views import (
 from apps.scans.views import HistoryDetailView, HistoryListView
 from apps.subscriptions.views import (
     PaystackCheckoutView,
+    PaystackPlansView,
     PaystackReturnView,
     PaystackVerifyView,
     PaystackWebhookView,
@@ -62,6 +63,7 @@ urlpatterns = [
     path("api/history/<int:pk>/", HistoryDetailView.as_view(), name="history-detail"),
     path("api/user/preferences/", PreferencesView.as_view(), name="preferences"),
     path("api/subscription/verify/", VerifySubscriptionView.as_view(), name="subscription-verify"),
+    path("api/subscription/paystack/plans/", PaystackPlansView.as_view(), name="paystack-plans"),
     path("api/subscription/paystack/checkout/", PaystackCheckoutView.as_view(), name="paystack-checkout"),
     path("api/subscription/paystack/verify/<str:reference>/", PaystackVerifyView.as_view(), name="paystack-verify"),
     path("api/subscription/paystack/return/", PaystackReturnView.as_view(), name="paystack-return"),

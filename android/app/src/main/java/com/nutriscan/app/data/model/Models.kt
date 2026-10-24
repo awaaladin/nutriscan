@@ -173,18 +173,22 @@ data class ProductSubmissionRequest(
     val ingredients_text: String,
 )
 
-/** Only the token and product go to the server -- it asks Google Play what was
- * actually bought, so the client can't claim a plan or expiry itself. */
-data class VerifyPurchaseRequest(
-    val purchase_token: String,
-    val product_id: String,
+/** A Pro plan sold through the web checkout, priced by the server. */
+data class ProPlan(
+    val plan: String,
+    val label: String,
+    val price_ngn: Int,
+    val days: Int,
 )
 
-data class SubscriptionStatus(
-    val plan: String,
-    val status: String,
-    val expires_at: String?,
-)
+/** [email] is only sent for accounts registered without one: Paystack needs it for the receipt. */
+data class CheckoutRequest(val plan: String, val email: String? = null)
+
+/** [authorization_url] is Paystack's payment page, opened in the browser rather than the app. */
+data class CheckoutResponse(val reference: String, val authorization_url: String)
+
+/** Pro is only ever switched on from what Paystack reports to the server, never by the app. */
+data class PaymentStatus(val reference: String, val status: String, val is_pro: Boolean)
 
 data class AvoidProduct(val barcode: String, val name: String)
 

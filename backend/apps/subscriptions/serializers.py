@@ -11,6 +11,8 @@ class SubscriptionSerializer(serializers.ModelSerializer):
 
 class PaystackCheckoutSerializer(serializers.Serializer):
     plan = serializers.ChoiceField(choices=Subscription.Plan.choices)
+    # Paystack needs an email for the receipt; accounts registered without one supply it here.
+    email = serializers.EmailField(required=False)
 
 
 class VerifyPurchaseSerializer(serializers.Serializer):

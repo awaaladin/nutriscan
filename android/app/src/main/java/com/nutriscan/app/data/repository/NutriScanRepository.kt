@@ -7,6 +7,8 @@ import com.nutriscan.app.data.model.AlertItem
 import com.nutriscan.app.data.model.AskRequest
 import com.nutriscan.app.data.model.AskResponse
 import com.nutriscan.app.data.model.AskTurn
+import com.nutriscan.app.data.model.CheckoutRequest
+import com.nutriscan.app.data.model.CheckoutResponse
 import com.nutriscan.app.data.model.CorrectionRequest
 import com.nutriscan.app.data.model.CorrectionResponse
 import com.nutriscan.app.data.model.SearchResponse
@@ -18,8 +20,10 @@ import com.nutriscan.app.data.model.FeedbackRequest
 import com.nutriscan.app.data.model.DisputeRequest
 import com.nutriscan.app.data.model.HistoryItem
 import com.nutriscan.app.data.model.LoginRequest
+import com.nutriscan.app.data.model.PaymentStatus
 import com.nutriscan.app.data.model.PreferencesUpdateRequest
 import com.nutriscan.app.data.model.ProInsights
+import com.nutriscan.app.data.model.ProPlan
 import com.nutriscan.app.data.model.ProductSubmissionRequest
 import com.nutriscan.app.data.model.RegisterRequest
 import com.nutriscan.app.data.model.RegisterResponse
@@ -27,10 +31,8 @@ import com.nutriscan.app.data.model.ReportsResponse
 import com.nutriscan.app.data.model.SubmitReportResponse
 import com.nutriscan.app.data.model.ScanRequest
 import com.nutriscan.app.data.model.ScanResponse
-import com.nutriscan.app.data.model.SubscriptionStatus
 import com.nutriscan.app.data.model.TokenPair
 import com.nutriscan.app.data.model.UserPreferences
-import com.nutriscan.app.data.model.VerifyPurchaseRequest
 import com.nutriscan.app.data.remote.ApiService
 import com.nutriscan.app.data.remote.describeFailure
 import com.nutriscan.app.data.remote.friendlyErrorMessage
@@ -412,8 +414,24 @@ class NutriScanRepository(
         if (!response.isSuccessful) error(friendlyErrorMessage(response.code()))
     }
 
-    suspend fun verifySubscription(request: VerifyPurchaseRequest): Result<SubscriptionStatus> = runCatching {
-        val response = api.verifySubscription(request)
+    suspend fun proPlans(): Result<List<ProPlan>> = runCatching {
+        val response = api.getProPlans()
+        if (!response.isSuccessful) error(friendlyErrorMessage(response.code()))
+        requireNotNull(response.body())
+    }
+
+    suspend fun startCheckout(request: CheckoutRequest): Result<CheckoutResponse> = runCatching {
+        val response = api.startCheckout(request)
+        if (!response.isSuccessful) {
+            val error = parseServerError(response) // read once: the body can't be re-read
+            if (error?.reason == "email_required") throw EmailRequiredException(error.detail ?: "Enter your email address.")
+            error(error?.detail ?: friendlyErrorMessage(response.code()))
+        }
+        requireNotNull(response.body())
+    }
+
+    suspend fun verifyPayment(reference: String): Result<PaymentStatus> = runCatching {
+        val response = api.verifyPayment(reference)
         if (!response.isSuccessful) error(friendlyErrorMessage(response.code()))
         requireNotNull(response.body())
     }
@@ -424,3 +442,6 @@ class NutriScanRepository(
         requireNotNull(response.body())
     }
 }
+
+/** The account has no email yet, and Paystack needs one before it can take the payment. */
+class EmailRequiredException(message: String) : Exception(message)

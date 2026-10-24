@@ -250,3 +250,21 @@ class PaystackTests(APITestCase):
         Subscription.objects.filter(user=self.user).update(expires_at=timezone.now() - timedelta(minutes=1))
         self.assertEqual(self.client.get(reverse("pro-insights")).status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(Subscription.objects.get(user=self.user).status, "expired")
+
+    def test_plans_list_server_prices(self):
+        response = self.client.get(reverse("paystack-plans"))
+        self.assertEqual({p["plan"]: p["price_ngn"] for p in response.data}, {"monthly": 1500, "yearly": 15000})
+
+    def test_account_without_email_supplies_one_at_checkout(self):
+        self.user.email = ""
+        self.user.save()
+        response = self.client.post(reverse("paystack-checkout"), {"plan": "monthly"}, format="json")
+        self.assertEqual(response.data["reason"], "email_required")
+        with patch("apps.subscriptions.paystack.initialize_transaction",
+                   return_value={"authorization_url": "https://checkout.paystack.com/x"}) as init:
+            response = self.client.post(reverse("paystack-checkout"), {"plan": "monthly", "email": "ada@example.com"},
+                                        format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(init.call_args.kwargs["email"], "ada@example.com")
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.email, "ada@example.com")

@@ -125,6 +125,19 @@ def _verify_with_paystack(payment):
     return apply_paystack_transaction(payment.reference, data) or payment
 
 
+class PaystackPlansView(APIView):
+    """Prices for the web checkout, so the app shows what Paystack will actually charge."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        return Response([
+            {"plan": plan, "label": Subscription.Plan(plan).label, "price_ngn": price,
+             "days": settings.PAYSTACK_PLAN_DAYS[plan]}
+            for plan, price in settings.PAYSTACK_PLAN_PRICES_NGN.items()
+        ])
+
+
 class PaystackCheckoutView(APIView):
     """Starts a Paystack checkout for one prepaid Pro period. The app opens authorization_url in
     a browser; Paystack sends the payer back to PaystackReturnView when they're done."""
@@ -136,7 +149,14 @@ class PaystackCheckoutView(APIView):
         serializer.is_valid(raise_exception=True)
         plan = serializer.validated_data["plan"]
         if not request.user.email:
-            return Response({"detail": "Add an email address to your account first."}, status=status.HTTP_400_BAD_REQUEST)
+            email = serializer.validated_data.get("email")
+            if not email:
+                return Response(
+                    {"detail": "Enter your email address for the payment receipt.", "reason": "email_required"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            request.user.email = email
+            request.user.save(update_fields=["email"])
 
         purpose = paystack.PURPOSES[plan]
         payment = PaystackPayment(

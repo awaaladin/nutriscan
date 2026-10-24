@@ -3,6 +3,8 @@ package com.nutriscan.app.data.remote
 import com.nutriscan.app.data.model.AlertItem
 import com.nutriscan.app.data.model.AskRequest
 import com.nutriscan.app.data.model.AskResponse
+import com.nutriscan.app.data.model.CheckoutRequest
+import com.nutriscan.app.data.model.CheckoutResponse
 import com.nutriscan.app.data.model.CorrectionRequest
 import com.nutriscan.app.data.model.CorrectionResponse
 import com.nutriscan.app.data.model.SearchResponse
@@ -14,8 +16,10 @@ import com.nutriscan.app.data.model.FeedbackRequest
 import com.nutriscan.app.data.model.DisputeRequest
 import com.nutriscan.app.data.model.HistoryItem
 import com.nutriscan.app.data.model.LoginRequest
+import com.nutriscan.app.data.model.PaymentStatus
 import com.nutriscan.app.data.model.PreferencesUpdateRequest
 import com.nutriscan.app.data.model.ProInsights
+import com.nutriscan.app.data.model.ProPlan
 import com.nutriscan.app.data.model.Product
 import com.nutriscan.app.data.model.ProductSubmissionRequest
 import com.nutriscan.app.data.model.RegisterRequest
@@ -24,10 +28,8 @@ import com.nutriscan.app.data.model.ReportsResponse
 import com.nutriscan.app.data.model.SubmitReportResponse
 import com.nutriscan.app.data.model.ScanRequest
 import com.nutriscan.app.data.model.ScanResponse
-import com.nutriscan.app.data.model.SubscriptionStatus
 import com.nutriscan.app.data.model.TokenPair
 import com.nutriscan.app.data.model.UserPreferences
-import com.nutriscan.app.data.model.VerifyPurchaseRequest
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import retrofit2.Response
@@ -162,8 +164,14 @@ interface ApiService {
     @PATCH("api/user/preferences/")
     suspend fun updatePreferences(@Body request: PreferencesUpdateRequest): Response<UserPreferences>
 
-    @POST("api/subscription/verify/")
-    suspend fun verifySubscription(@Body request: VerifyPurchaseRequest): Response<SubscriptionStatus>
+    @GET("api/subscription/paystack/plans/")
+    suspend fun getProPlans(): Response<List<ProPlan>>
+
+    @POST("api/subscription/paystack/checkout/")
+    suspend fun startCheckout(@Body request: CheckoutRequest): Response<CheckoutResponse>
+
+    @POST("api/subscription/paystack/verify/{reference}/")
+    suspend fun verifyPayment(@Path("reference") reference: String): Response<PaymentStatus>
 
     @GET("api/pro/insights/")
     suspend fun getProInsights(): Response<ProInsights>

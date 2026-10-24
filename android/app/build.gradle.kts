@@ -98,8 +98,6 @@ dependencies {
     implementation("androidx.core:core-splashscreen:1.0.1")
     implementation("androidx.compose.foundation:foundation")
 
-    // Google Play subscriptions
-    implementation("com.android.billingclient:billing-ktx:7.0.0")
 
     // Report photo thumbnails
     implementation("io.coil-kt:coil-compose:2.6.0")
