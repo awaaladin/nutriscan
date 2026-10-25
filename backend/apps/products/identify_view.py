@@ -7,7 +7,8 @@ from rest_framework.views import APIView
 
 from apps.community.integrity import gtin_checksum_valid
 from apps.community.nafdac import normalize_nafdac_number
-from apps.integrations.vision_identify import IdentifyError, identify_product_from_images
+from apps.integrations.vision_identify import IdentifyError, identify_product_from_images, take_usage
+from apps.subscriptions import credits
 from apps.scans.models import Scan
 
 from .barcodes import find_product_by_barcode
@@ -141,6 +142,7 @@ class IdentifyProductView(APIView):
         except ValueError as exc:
             return self._error(str(exc), "bad_photos", status.HTTP_400_BAD_REQUEST, client_barcode, retake=True)
 
+        take_usage()
         try:
             result = identify_product_from_images(photos)
         except IdentifyError as exc:
@@ -152,6 +154,7 @@ class IdentifyProductView(APIView):
                 http_status = status.HTTP_502_BAD_GATEWAY
             return self._error(exc.message, exc.reason, http_status, client_barcode, retake=exc.retake)
 
+        credits.charge(request.user, "identify", take_usage())  # free, but its cost is recorded
         ai_barcode = (result.get("barcode") or "").strip()
         barcode = client_barcode or (ai_barcode if gtin_checksum_valid(ai_barcode) else "") or f"AI-{uuid4().hex[:12]}"
 

@@ -23,8 +23,10 @@ from apps.products.views import (
     ProductSubmissionView,
     ScanView,
 )
+from apps.health.views import HealthLogDetailView, HealthLogListView, HealthSummaryView, HealthToolView
 from apps.scans.views import HistoryDetailView, HistoryListView
 from apps.subscriptions.views import (
+    CreditsView,
     PaystackCheckoutView,
     PaystackPlansView,
     PaystackReturnView,
@@ -33,7 +35,7 @@ from apps.subscriptions.views import (
     ProInsightsView,
     VerifySubscriptionView,
 )
-from apps.users.views import PreferencesView, RegisterView
+from apps.users.views import DeleteAccountView, PreferencesView, RegisterView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -62,12 +64,18 @@ urlpatterns = [
     path("api/history/", HistoryListView.as_view(), name="history"),
     path("api/history/<int:pk>/", HistoryDetailView.as_view(), name="history-detail"),
     path("api/user/preferences/", PreferencesView.as_view(), name="preferences"),
+    path("api/user/account/", DeleteAccountView.as_view(), name="delete-account"),
     path("api/subscription/verify/", VerifySubscriptionView.as_view(), name="subscription-verify"),
+    path("api/credits/", CreditsView.as_view(), name="credits"),
     path("api/subscription/paystack/plans/", PaystackPlansView.as_view(), name="paystack-plans"),
     path("api/subscription/paystack/checkout/", PaystackCheckoutView.as_view(), name="paystack-checkout"),
     path("api/subscription/paystack/verify/<str:reference>/", PaystackVerifyView.as_view(), name="paystack-verify"),
     path("api/subscription/paystack/return/", PaystackReturnView.as_view(), name="paystack-return"),
     path("api/subscription/paystack/webhook/", PaystackWebhookView.as_view(), name="paystack-webhook"),
+    path("api/health/logs/", HealthLogListView.as_view(), name="health-logs"),
+    path("api/health/logs/<int:log_id>/", HealthLogDetailView.as_view(), name="health-log-detail"),
+    path("api/health/summary/", HealthSummaryView.as_view(), name="health-summary"),
+    path("api/health/<str:tool>/", HealthToolView.as_view(), name="health-tool"),
     path("api/pro/insights/", ProInsightsView.as_view(), name="pro-insights"),
 ]
 

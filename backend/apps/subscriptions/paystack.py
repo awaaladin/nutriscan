@@ -4,8 +4,9 @@ One Paystack account serves several apps, so every NutriScan reference starts wi
 and every transaction carries the same metadata keys. That lets the dashboard, exports and the
 webhook router tell NutriScan's payments apart from the other apps':
 
-    NUTRISCAN-PROMONTH-20261023-4F9A2C7B1E0D   one month of Pro
-    NUTRISCAN-PROYEAR-20261023-9C1E0D4F9A2C    one year of Pro
+    NUTRISCAN-PROMONTH-20261023-4F9A2C7B1E0D   one month of Pro (also PLUSMONTH, CAREMONTH)
+    NUTRISCAN-CAREYEAR-20261023-9C1E0D4F9A2C   one year of Pro Care (also PROYEAR, PLUSYEAR)
+    NUTRISCAN-CREDITS-20261023-0D4F9A2C9C1E    a top-up of AI credits
 
 The router forwards only NUTRISCAN- references here, byte for byte, so the HMAC signature still
 verifies against the shared secret key.
@@ -20,7 +21,12 @@ from django.utils import timezone
 
 APP_CODE = "NUTRISCAN"
 APP_NAME = "NutriScan"
-PURPOSES = {"monthly": "PROMONTH", "yearly": "PROYEAR"}
+CREDITS_PURPOSE = "CREDITS"
+
+
+def plan_purpose(tier: str, plan: str) -> str:
+    """PROMONTH, PLUSYEAR, CAREMONTH...: the plan bought, readable in the reference."""
+    return f"{tier.upper()}{'MONTH' if plan == 'monthly' else 'YEAR'}"
 
 
 class PaystackError(Exception):

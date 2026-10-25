@@ -1,4 +1,4 @@
-"""Shared chat engine: one place for web search, model fallback and image input.
+"""Shared chat engine: one place for web search, model fallback, answer length and image input.
 
 Used by the per-product "ask about this product" screen and by the general
 assistant chat, so both behave the same way when Google's free tier refuses web
@@ -10,7 +10,7 @@ import os
 import time
 from typing import Dict, List, Optional, Tuple
 
-from .vision_identify import IdentifyError, _http_error, configured_models, post_with_model_fallback
+from .vision_identify import IdentifyError, _http_error, configured_models, post_with_model_fallback, take_usage
 
 # Web search ("grounding") has its own, much smaller quota than plain answers and
 # is blocked on Google's free tier. Once it has been refused, skip it for a while
@@ -24,19 +24,30 @@ NO_SEARCH_NOTE = (
 )
 
 
+# Answers are capped so one question can't run up a long bill. Thinking models (the fallbacks)
+# spend output tokens reasoning before they answer, so they get headroom on top of the cap and
+# are asked to think briefly. Measured: a chat answer is ~250 tokens, a thinking model ~300 more.
+DEFAULT_ANSWER_TOKENS = 600
+THINKING_HEADROOM_TOKENS = 600
+
+
 def generate(
     system_instruction: str,
     history: List[Dict[str, str]],
     user_text: str,
     images: Optional[List[Tuple[bytes, str]]] = None,
-    max_history: int = 10,
+    max_history: int = 6,
+    search: bool = False,
     require_search: bool = False,
+    max_answer_tokens: int = DEFAULT_ANSWER_TOKENS,
+    max_sources: int = 4,
 ) -> dict:
-    """Returns {"answer", "sources", "web_research"}. `history` is earlier turns,
+    """Returns {"answer", "sources", "web_research", "usage"}. `history` is earlier turns,
     oldest first, as {"role": "user"|"assistant", "text": ...}; `images` are
     (bytes, mime) attached to the new user turn. Raises IdentifyError (reused for
-    its reason/message shape) when the AI can't answer. Tries web search first;
-    if that isn't available it answers without it and says so via web_research=False."""
+    its reason/message shape) when the AI can't answer. Web search runs only when asked
+    for (`search`, which Google bills per query); if it isn't available the answer comes
+    without it and says so via web_research=False. `usage` is Gemini's token count."""
     global _search_unavailable_until
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
@@ -55,13 +66,22 @@ def generate(
 
     def payload(with_search: bool) -> dict:
         instruction = system_instruction + ("" if with_search else NO_SEARCH_NOTE)
-        body = {"systemInstruction": {"parts": [{"text": instruction}]}, "contents": contents}
+        body = {
+            "systemInstruction": {"parts": [{"text": instruction}]},
+            "contents": contents,
+            "generationConfig": {
+                "maxOutputTokens": max_answer_tokens + THINKING_HEADROOM_TOKENS,
+                "thinkingConfig": {"thinkingLevel": "low"},
+            },
+        }
         if with_search:
             body["tools"] = [{"google_search": {}}]
         return body
 
+    take_usage()  # start this answer's count from zero
+    search = search or require_search
     response, web_research = None, False
-    if time.time() >= _search_unavailable_until:
+    if search and time.time() >= _search_unavailable_until:
         # One quick attempt on the primary model only: a refusal is expected on
         # the free tier and must not cost a long retry loop.
         response = post_with_model_fallback(
@@ -94,4 +114,4 @@ def generate(
         if url and url not in seen:
             seen.add(url)
             sources.append({"title": web.get("title") or url, "url": url})
-    return {"answer": answer, "sources": sources[:4], "web_research": web_research}
+    return {"answer": answer, "sources": sources[:max_sources], "web_research": web_research, "usage": take_usage()}

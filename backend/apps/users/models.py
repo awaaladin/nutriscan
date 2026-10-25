@@ -23,6 +23,15 @@ class User(AbstractUser):
     # training dataset. Health data is sensitive personal data: off by default.
     allow_training_use = models.BooleanField(default=False)
     region = models.CharField(max_length=64, default="NG")
+    # Bought top-up credits: spent after the monthly allowance, never expire.
+    bonus_credits = models.PositiveIntegerField(default=0)
+    # Optional, for weight goals (BMI and progress in the Pro health tools).
+    height_cm = models.PositiveSmallIntegerField(null=True, blank=True)
+    target_weight_kg = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True)
+    # When the user accepted the Terms and Privacy Policy, and separately gave the explicit
+    # consent the NDPA requires before we process their health information. Null = not yet.
+    terms_accepted_at = models.DateTimeField(null=True, blank=True)
+    health_consent_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return self.username

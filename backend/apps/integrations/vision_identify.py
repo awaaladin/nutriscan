@@ -18,6 +18,7 @@ written for the user, so the app can say what actually went wrong instead of a
 generic "couldn't identify".
 """
 import base64
+import contextvars
 import json
 import os
 import time
@@ -219,8 +220,45 @@ def post_with_model_fallback(
     for model in models or configured_models(kind):
         response = _post_with_retries(API_URL.format(model=model), api_key, payload, timeout, max_attempts)
         if response.status_code not in (404, 429):
+            if response.status_code == 200:
+                _usage.set(_usage.get() + [usage_of(response)])
             return response
     return response
+
+
+# Usage of every successful call in this request/thread, so a view can meter calls made deep
+# inside helpers (photo identification, nutrition reading) without changing their return values.
+_usage: contextvars.ContextVar = contextvars.ContextVar("gemini_usage", default=[])
+
+
+def take_usage() -> dict:
+    """Sums and clears the usage recorded since the last call."""
+    calls = _usage.get()
+    _usage.set([])
+    total = {"model": "", "prompt_tokens": 0, "output_tokens": 0, "search_queries": 0}
+    for call in calls:
+        total["model"] = total["model"] or call.get("model", "")
+        for key in ("prompt_tokens", "output_tokens", "search_queries"):
+            total[key] += call.get(key, 0)
+    return total
+
+
+def usage_of(response) -> dict:
+    """Gemini's own count of what a successful call used, for metering (see AiUsage).
+    Thinking tokens are billed as output, so they're added in."""
+    try:
+        body = response.json()
+    except (ValueError, AttributeError):
+        return {}
+    meta = body.get("usageMetadata") or {}
+    candidates = body.get("candidates") or [{}]
+    queries = (candidates[0].get("groundingMetadata") or {}).get("webSearchQueries") or []
+    return {
+        "model": body.get("modelVersion", ""),
+        "prompt_tokens": meta.get("promptTokenCount", 0),
+        "output_tokens": meta.get("candidatesTokenCount", 0) + meta.get("thoughtsTokenCount", 0),
+        "search_queries": len(queries),
+    }
 
 
 def _http_error(response) -> IdentifyError:

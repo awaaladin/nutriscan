@@ -14,6 +14,9 @@ from apps.integrations.product_qa import (
     build_product_context,
 )
 
+from apps.subscriptions import credits
+from apps.subscriptions.credits import CreditError
+
 from .barcodes import find_product_by_barcode
 from .scoring_helpers import for_you, score_product
 from .views import missing_names
@@ -50,6 +53,10 @@ class ProductAskView(APIView):
         serializer = AskSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
+        try:
+            credits.ensure_can_spend(request.user, "product_question")
+        except CreditError as exc:
+            return Response(exc.as_response_data(), status=exc.status)
 
         score = None
         if product.product_type == "food":
@@ -82,4 +89,6 @@ class ProductAskView(APIView):
                 status.HTTP_503_SERVICE_UNAVAILABLE if exc.reason == "ai_not_configured" else status.HTTP_502_BAD_GATEWAY
             )
             return Response({"detail": exc.message, "reason": exc.reason}, status=http_status)
+        credits.charge(request.user, "product_question", reply.pop("usage", None))
+        reply["credits_left"] = credits.balance(request.user)["total_remaining"]
         return Response(reply)

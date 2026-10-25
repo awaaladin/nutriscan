@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Subscription
+from .models import Subscription, Tier
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):
@@ -10,7 +10,10 @@ class SubscriptionSerializer(serializers.ModelSerializer):
 
 
 class PaystackCheckoutSerializer(serializers.Serializer):
-    plan = serializers.ChoiceField(choices=Subscription.Plan.choices)
+    # A plan period (tier + monthly/yearly), or kind="credits" for a top-up.
+    kind = serializers.ChoiceField(choices=["subscription", "credits"], default="subscription")
+    tier = serializers.ChoiceField(choices=Tier.choices, default=Tier.PRO)
+    plan = serializers.ChoiceField(choices=Subscription.Plan.choices, default=Subscription.Plan.MONTHLY)
     # Paystack needs an email for the receipt; accounts registered without one supply it here.
     email = serializers.EmailField(required=False)
 

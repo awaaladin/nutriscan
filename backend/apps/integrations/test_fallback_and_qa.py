@@ -87,16 +87,19 @@ class ProductQaTests(SimpleTestCase):
             ]
         }
 
-    def test_web_research_used_when_available(self):
+    def search(self, question="Is it ok?"):
+        return gemini_chat.generate("CTX", [], question, search=True)
+
+    def test_web_research_used_when_asked_for_and_available(self):
         with patch(POST, return_value=Resp(200, self._answer())) as post:
-            reply = ask_about_product("CTX", "Is it ok?", [])
+            reply = self.search()
         self.assertTrue(reply["web_research"])
         self.assertEqual(reply["sources"], [{"title": "A", "url": "https://x.test/a"}])
         self.assertIn("tools", post.call_args.kwargs["json"])
 
     def test_falls_back_to_our_own_data_when_search_is_refused(self):
         with patch(POST, side_effect=[Resp(429), Resp(200, self._answer())]) as post, patch(SLEEP):
-            reply = ask_about_product("CTX", "Is it ok?", [])
+            reply = self.search()
         self.assertFalse(reply["web_research"])
         second = post.call_args_list[1].kwargs["json"]
         self.assertNotIn("tools", second)
@@ -104,11 +107,29 @@ class ProductQaTests(SimpleTestCase):
 
     def test_refused_search_is_not_retried_on_every_question(self):
         with patch(POST, side_effect=[Resp(429), Resp(200, self._answer()), Resp(200, self._answer())]) as post, patch(SLEEP):
-            ask_about_product("CTX", "one", [])
-            ask_about_product("CTX", "two", [])
+            self.search("one")
+            self.search("two")
         # question two went straight to a no-search answer: 3 calls total, not 4
         self.assertEqual(len(post.call_args_list), 3)
         self.assertNotIn("tools", post.call_args_list[2].kwargs["json"])
+
+    def test_product_questions_never_pay_for_web_search_and_are_capped(self):
+        with patch(POST, return_value=Resp(200, self._answer())) as post:
+            reply = ask_about_product("CTX", "Is it ok?", [])
+        sent = post.call_args.kwargs["json"]
+        self.assertNotIn("tools", sent)
+        self.assertFalse(reply["web_research"])
+        self.assertEqual(sent["generationConfig"]["maxOutputTokens"], 600 + gemini_chat.THINKING_HEADROOM_TOKENS)
+        self.assertEqual(sent["generationConfig"]["thinkingConfig"], {"thinkingLevel": "low"})
+
+    def test_usage_is_reported_from_gemini(self):
+        body = self._answer()
+        body["modelVersion"] = "gemini-3.5-flash-lite"
+        body["usageMetadata"] = {"promptTokenCount": 1800, "candidatesTokenCount": 240, "thoughtsTokenCount": 60}
+        with patch(POST, return_value=Resp(200, body)):
+            reply = ask_about_product("CTX", "Is it ok?", [])
+        self.assertEqual(reply["usage"], {"model": "gemini-3.5-flash-lite", "prompt_tokens": 1800,
+                                          "output_tokens": 300, "search_queries": 0})
 
     def test_history_and_product_context_are_sent(self):
         history = [{"role": "user", "text": "hi"}, {"role": "assistant", "text": "hello"}]

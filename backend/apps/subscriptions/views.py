@@ -4,6 +4,7 @@ import logging
 from django.conf import settings
 from django.db import IntegrityError
 from django.http import HttpResponse
+from django.utils import timezone
 from django.utils.html import escape
 from rest_framework import permissions, status
 from rest_framework.response import Response
@@ -11,7 +12,7 @@ from rest_framework.views import APIView
 
 from apps.scans.models import Scan
 
-from . import paystack
+from . import credits, paystack
 from .models import PaystackPayment, Subscription
 from .play_client import PlayNotConfigured, PlayVerificationError, get_verifier
 from .serializers import PaystackCheckoutSerializer, SubscriptionSerializer, VerifyPurchaseSerializer
@@ -125,31 +126,80 @@ def _verify_with_paystack(payment):
     return apply_paystack_transaction(payment.reference, data) or payment
 
 
+# What each plan includes, shown on the plans screen. Each tier includes everything below it.
+TIER_FEATURES = {
+    "pro": [
+        "Research mode: answers from trusted health sources, with links",
+        "Your personal avoid-list and scan patterns",
+        "Weight tracker with BMI and goal progress",
+    ],
+    "plus": [
+        "Everything in Pro",
+        "Blood pressure tracker with targets",
+        "7-day Nigerian meal plans built around your goal and budget",
+        "Weekly AI progress report from your readings and scans",
+    ],
+    "care": [
+        "Everything in Pro Plus",
+        "Blood sugar tracker: fasting and after-meal targets, trends",
+        "Meal plans and reports tuned to your glucose readings",
+        "Doctor-visit summary you can share",
+    ],
+}
+
+
+def _price_ngn(tier: str, plan: str) -> int:
+    monthly = settings.PRO_TIERS[tier]["monthly_ngn"]
+    return monthly if plan == Subscription.Plan.MONTHLY else monthly * settings.YEARLY_MONTHS_CHARGED
+
+
 class PaystackPlansView(APIView):
-    """Prices for the web checkout, so the app shows what Paystack will actually charge."""
+    """Plans, prices and credits for the web checkout, so the app shows what Paystack will charge."""
 
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        return Response([
-            {"plan": plan, "label": Subscription.Plan(plan).label, "price_ngn": price,
-             "days": settings.PAYSTACK_PLAN_DAYS[plan]}
-            for plan, price in settings.PAYSTACK_PLAN_PRICES_NGN.items()
-        ])
+        tiers = [
+            {
+                "tier": tier,
+                "label": info["label"],
+                "monthly_ngn": info["monthly_ngn"],
+                "yearly_ngn": _price_ngn(tier, Subscription.Plan.YEARLY),
+                "monthly_credits": info["monthly_credits"],
+                "features": TIER_FEATURES[tier],
+            }
+            for tier, info in settings.PRO_TIERS.items()
+        ]
+        return Response({
+            "tiers": tiers,
+            "free_monthly_credits": settings.FREE_MONTHLY_CREDITS,
+            "topup": settings.CREDIT_TOPUP,
+            "credit_costs": settings.AI_CREDIT_COSTS,
+            "balance": credits.balance(request.user),
+        })
+
+
+class CreditsView(APIView):
+    """GET /api/credits/ -- what the user has left this month."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        return Response(credits.balance(request.user))
 
 
 class PaystackCheckoutView(APIView):
-    """Starts a Paystack checkout for one prepaid Pro period. The app opens authorization_url in
-    a browser; Paystack sends the payer back to PaystackReturnView when they're done."""
+    """Starts a Paystack checkout for one prepaid plan period or a credit top-up. The app opens
+    authorization_url in the browser; Paystack sends the payer back to PaystackReturnView."""
 
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
         serializer = PaystackCheckoutSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        plan = serializer.validated_data["plan"]
+        data = serializer.validated_data
         if not request.user.email:
-            email = serializer.validated_data.get("email")
+            email = data.get("email")
             if not email:
                 return Response(
                     {"detail": "Enter your email address for the payment receipt.", "reason": "email_required"},
@@ -158,32 +208,54 @@ class PaystackCheckoutView(APIView):
             request.user.email = email
             request.user.save(update_fields=["email"])
 
-        purpose = paystack.PURPOSES[plan]
-        payment = PaystackPayment(
-            user=request.user,
-            plan=plan,
-            reference=paystack.make_reference(purpose),
-            amount_kobo=settings.PAYSTACK_PLAN_PRICES_NGN[plan] * 100,
-        )
-        label = f"NutriScan Pro ({Subscription.Plan(plan).label})"
+        if data["kind"] == PaystackPayment.Kind.CREDITS:
+            topup = settings.CREDIT_TOPUP
+            purpose = paystack.CREDITS_PURPOSE
+            payment = PaystackPayment(
+                user=request.user, kind=PaystackPayment.Kind.CREDITS, credits=topup["credits"],
+                reference=paystack.make_reference(purpose), amount_kobo=topup["price_ngn"] * 100,
+            )
+            label = f"NutriScan AI credits ({topup['credits']})"
+            extra = {"credits": topup["credits"]}
+        else:
+            tier, plan = data["tier"], data["plan"]
+            current = credits.tier_of(request.user)
+            if credits.TIER_RANK[current] > credits.TIER_RANK[tier]:
+                expires = Subscription.objects.get(user=request.user).expires_at
+                return Response(
+                    {
+                        "detail": f"You're on NutriScan {settings.PRO_TIERS[current]['label']} until "
+                                  f"{timezone.localtime(expires):%d %b %Y}. You can switch to a smaller plan after that.",
+                        "reason": "downgrade_while_active",
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            purpose = paystack.plan_purpose(tier, plan)
+            payment = PaystackPayment(
+                user=request.user, plan=plan, tier=tier, reference=paystack.make_reference(purpose),
+                amount_kobo=_price_ngn(tier, plan) * 100,
+            )
+            label = f"NutriScan {settings.PRO_TIERS[tier]['label']} ({Subscription.Plan(plan).label})"
+            extra = {"tier": tier, "plan": plan}
+
         try:
-            data = paystack.initialize_transaction(
+            result = paystack.initialize_transaction(
                 email=request.user.email,
                 amount_kobo=payment.amount_kobo,
                 reference=payment.reference,
                 callback_url=f"{settings.PUBLIC_BASE_URL.rstrip('/')}/api/subscription/paystack/return/",
-                metadata=paystack.paystack_metadata(purpose, label, user_id=request.user.id, plan=plan),
+                metadata=paystack.paystack_metadata(purpose, label, user_id=request.user.id, **extra),
             )
         except paystack.PaystackNotConfigured:
             return Response(
-                {"detail": "Subscriptions aren't available right now. Please try again later."},
+                {"detail": "Payments aren't available right now. Please try again later."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except paystack.PaystackError as exc:
             log.error("Paystack initialize failed for %s: %s", payment.reference, exc)
             return Response({"detail": "Payment couldn't be started. Please try again."}, status=status.HTTP_502_BAD_GATEWAY)
 
-        payment.authorization_url = data["authorization_url"]
+        payment.authorization_url = result["authorization_url"]
         payment.save()
         return Response(
             {"reference": payment.reference, "authorization_url": payment.authorization_url},
@@ -219,11 +291,11 @@ class PaystackReturnView(APIView):
             payment = _verify_with_paystack(payment)
 
         if payment is not None and payment.status == PaystackPayment.Status.SUCCESS:
-            title, message = "Payment received", "NutriScan Pro is active. You can go back to the app."
+            title, message = "Payment received", "Thank you. Your purchase is active. You can go back to the NutriScan app."
         elif payment is not None and payment.status == PaystackPayment.Status.FAILED:
             title, message = "Payment not accepted", "Please contact support with your reference."
         else:
-            title, message = "Payment not confirmed yet", "If you paid, Pro will switch on within a few minutes."
+            title, message = "Payment not confirmed yet", "If you paid, it will switch on within a few minutes."
         page = (
             '<!doctype html><html lang="en"><head><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width, initial-scale=1">'

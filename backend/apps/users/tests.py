@@ -12,9 +12,12 @@ class AuthFlowTests(APITestCase):
                 "email": "amaka@example.com",
                 "password": "strongpassword123",
                 "region": "NG",
+                "accept_terms": True,
+                "health_consent": True,
             },
         )
         self.assertEqual(register_resp.status_code, status.HTTP_201_CREATED)
+        self.assertIsNotNone(register_resp.data["user"]["terms_accepted_at"])
         access = register_resp.data["access"]
 
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")

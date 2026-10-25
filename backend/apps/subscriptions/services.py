@@ -62,7 +62,7 @@ def refresh_pro_status(user) -> None:
 def apply_paystack_transaction(reference: str, data: dict) -> PaystackPayment | None:
     """Applies Paystack's view of a transaction to its payment. The row lock plus the PENDING
     check make it idempotent: the webhook, the return page and the app's verify call can all
-    report the same charge and Pro is still extended once. Only a successful NGN charge of at
+    report the same charge and Pro (or a top-up) is still applied once. Only a successful NGN charge of at
     least the price counts; Pro is never granted from anything but Paystack's answer."""
     payment = PaystackPayment.objects.select_for_update().select_related("user").filter(reference=reference).first()
     if payment is None or payment.status != PaystackPayment.Status.PENDING or data.get("status") != "success":
@@ -81,10 +81,23 @@ def apply_paystack_transaction(reference: str, data: dict) -> PaystackPayment | 
     payment.paystack_transaction_id = str(data.get("id") or "")
     payment.save(update_fields=["status", "paid_at", "paystack_transaction_id"])
 
+    if payment.user_id is None:
+        log.warning("Paystack %s paid after its account was deleted; refund it from the dashboard", reference)
+        return payment
+
+    if payment.kind == PaystackPayment.Kind.CREDITS:
+        user = type(payment.user).objects.select_for_update().get(pk=payment.user_id)
+        user.bonus_credits += payment.credits
+        user.save(update_fields=["bonus_credits"])
+        return payment
+
     subscription, _ = Subscription.objects.select_for_update().get_or_create(user=payment.user)
     still_running = subscription.is_active and subscription.expires_at and subscription.expires_at > now
+    # Same or higher tier: the new period starts when the current one ends (an upgrade applies
+    # to the remaining time straight away). Checkout refuses a lower tier while one is running.
     start = subscription.expires_at if still_running else now
     subscription.plan = payment.plan
+    subscription.tier = payment.tier or subscription.tier
     subscription.status = Subscription.Status.ACTIVE
     subscription.expires_at = start + timedelta(days=settings.PAYSTACK_PLAN_DAYS[payment.plan])
     subscription.save()

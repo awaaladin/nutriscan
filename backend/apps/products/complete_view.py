@@ -5,7 +5,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.community.nafdac import normalize_nafdac_number
-from apps.integrations.vision_identify import IdentifyError, extract_nutrition_from_images
+from apps.integrations.vision_identify import IdentifyError, extract_nutrition_from_images, take_usage
+from apps.subscriptions import credits
 
 from .barcodes import find_product_by_barcode
 from .identify_helpers import MAX_PHOTOS, inherit_nafdac_verification, read_valid_photos
@@ -75,6 +76,7 @@ class CompleteProductView(APIView):
                 photos = read_valid_photos(uploads[:MAX_PHOTOS])
             except ValueError as exc:
                 return self._error(str(exc), "bad_photos", status.HTTP_400_BAD_REQUEST, retake=True)
+            take_usage()
             try:
                 result = extract_nutrition_from_images(photos)
             except IdentifyError as exc:
@@ -88,6 +90,7 @@ class CompleteProductView(APIView):
                 if not typed:
                     return self._error(exc.message, exc.reason, http_status, retake=exc.retake)
             else:
+                credits.charge(request.user, "identify", take_usage())  # free, but its cost is recorded
                 from_photo = clean_nutrition({k: result.get(k) for k in _NUMERIC_FIELDS}, strict=False)
                 photo_ingredients = (result.get("ingredients_text") or "").strip()
                 photo_nafdac = normalize_nafdac_number(result.get("nafdac_number"))

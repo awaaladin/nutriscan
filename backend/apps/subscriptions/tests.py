@@ -11,7 +11,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from .models import Subscription
+from .models import PaystackPayment, Subscription
 from .play_client import PlayNotConfigured, PlaySubscription, PlayVerificationError
 
 User = get_user_model()
@@ -161,7 +161,7 @@ class ProStatusTests(APITestCase):
 PAYSTACK_SECRET = "sk_test_unit"
 
 
-def _charge(reference, amount_kobo=150_000):
+def _charge(reference, amount_kobo=300_000):
     return {"id": 777, "reference": reference, "amount": amount_kobo, "status": "success", "currency": "NGN"}
 
 
@@ -171,12 +171,16 @@ class PaystackTests(APITestCase):
         self.user = User.objects.create_user(username="ada", email="ada@example.com", password="strongpassword123")
         self.client.force_authenticate(self.user)
 
-    def checkout(self, plan="monthly"):
+    def checkout(self, plan="monthly", tier="pro", **extra):
         with patch("apps.subscriptions.paystack.initialize_transaction",
                    return_value={"authorization_url": "https://checkout.paystack.com/x"}) as init:
-            response = self.client.post(reverse("paystack-checkout"), {"plan": plan}, format="json")
+            response = self.client.post(reverse("paystack-checkout"), {"plan": plan, "tier": tier, **extra}, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
         return response.data["reference"], init
+
+    def pay(self, reference):
+        amount = PaystackPayment.objects.get(reference=reference).amount_kobo
+        return self.webhook({"event": "charge.success", "data": _charge(reference, amount)})
 
     def webhook(self, payload, secret=PAYSTACK_SECRET):
         body = json.dumps(payload).encode()
@@ -184,32 +188,62 @@ class PaystackTests(APITestCase):
         return self.client.post(reverse("paystack-webhook"), data=body, content_type="application/json",
                                 HTTP_X_PAYSTACK_SIGNATURE=sig)
 
-    def test_reference_and_metadata_identify_nutriscan(self):
-        reference, init = self.checkout("yearly")
-        self.assertRegex(reference, r"^NUTRISCAN-PROYEAR-\d{8}-[0-9A-F]{12}$")
+    def test_reference_and_metadata_identify_nutriscan_and_the_plan(self):
+        reference, init = self.checkout("yearly", "care")
+        self.assertRegex(reference, r"^NUTRISCAN-CAREYEAR-\d{8}-[0-9A-F]{12}$")
         kwargs = init.call_args.kwargs
-        self.assertEqual(kwargs["amount_kobo"], 1_500_000)
+        self.assertEqual(kwargs["amount_kobo"], 7000 * 10 * 100)  # a year is charged as 10 months
         self.assertEqual(kwargs["callback_url"], "https://api.nutriscan.test/api/subscription/paystack/return/")
         self.assertEqual(kwargs["metadata"]["app"], "NUTRISCAN")
-        self.assertEqual(kwargs["metadata"]["custom_fields"][1]["value"], "NutriScan Pro (Yearly)")
+        self.assertEqual(kwargs["metadata"]["tier"], "care")
+        self.assertEqual(kwargs["metadata"]["custom_fields"][1]["value"], "NutriScan Pro Care (Yearly)")
 
-    def test_webhook_grants_pro_once(self):
-        reference, _ = self.checkout()
-        payload = {"event": "charge.success", "data": _charge(reference)}
-        self.assertEqual(self.webhook(payload).status_code, 200)
-        first = Subscription.objects.get(user=self.user).expires_at
-        self.webhook(payload)  # re-delivery
-        self.assertEqual(Subscription.objects.get(user=self.user).expires_at, first)
+    def test_prices_per_tier(self):
+        for tier, naira in (("pro", 3000), ("plus", 5000), ("care", 7000)):
+            _, init = self.checkout("monthly", tier)
+            self.assertEqual(init.call_args.kwargs["amount_kobo"], naira * 100)
+
+    def test_webhook_grants_the_tier_once(self):
+        reference, _ = self.checkout("monthly", "plus")
+        self.assertEqual(self.pay(reference).status_code, 200)
+        first = Subscription.objects.get(user=self.user)
+        self.pay(reference)  # re-delivery
+        again = Subscription.objects.get(user=self.user)
+        self.assertEqual(again.expires_at, first.expires_at)
+        self.assertEqual(again.tier, "plus")
         self.user.refresh_from_db()
         self.assertTrue(self.user.is_pro)
-        self.assertAlmostEqual((first - timezone.now()).days, 29, delta=1)
+        self.assertAlmostEqual((first.expires_at - timezone.now()).days, 29, delta=1)
 
     def test_renewing_early_extends_from_current_expiry(self):
         Subscription.objects.create(user=self.user, status="active", expires_at=timezone.now() + timedelta(days=10))
+        self.user.is_pro = True
+        self.user.save()
         reference, _ = self.checkout()
-        self.webhook({"event": "charge.success", "data": _charge(reference)})
+        self.pay(reference)
         remaining = Subscription.objects.get(user=self.user).expires_at - timezone.now()
         self.assertAlmostEqual(remaining.days, 39, delta=1)
+
+    def test_upgrade_applies_now_and_downgrade_waits_for_expiry(self):
+        reference, _ = self.checkout("monthly", "pro")
+        self.pay(reference)
+        reference, _ = self.checkout("monthly", "care")
+        self.pay(reference)
+        self.assertEqual(Subscription.objects.get(user=self.user).tier, "care")
+        self.user.refresh_from_db()  # as a real request would load it
+        self.client.force_authenticate(self.user)
+        response = self.client.post(reverse("paystack-checkout"), {"plan": "monthly", "tier": "pro"}, format="json")
+        self.assertEqual(response.data["reason"], "downgrade_while_active")
+
+    def test_credit_topup_adds_bonus_credits_once(self):
+        reference, init = self.checkout(kind="credits")
+        self.assertRegex(reference, r"^NUTRISCAN-CREDITS-")
+        self.assertEqual(init.call_args.kwargs["amount_kobo"], 800 * 100)
+        self.pay(reference)
+        self.pay(reference)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.bonus_credits, 100)
+        self.assertFalse(self.user.is_pro)  # a top-up is not a plan
 
     def test_bad_signature_grants_nothing(self):
         reference, _ = self.checkout()
@@ -219,8 +253,8 @@ class PaystackTests(APITestCase):
         self.assertFalse(self.user.is_pro)
 
     def test_short_payment_grants_nothing(self):
-        reference, _ = self.checkout()
-        self.webhook({"event": "charge.success", "data": _charge(reference, amount_kobo=100)})
+        reference, _ = self.checkout("monthly", "care")
+        self.webhook({"event": "charge.success", "data": _charge(reference, amount_kobo=300_000)})
         self.user.refresh_from_db()
         self.assertFalse(self.user.is_pro)
 
@@ -242,7 +276,7 @@ class PaystackTests(APITestCase):
 
     def test_paystack_pro_survives_until_expiry_then_lapses(self):
         reference, _ = self.checkout()
-        self.webhook({"event": "charge.success", "data": _charge(reference)})
+        self.pay(reference)
         self.user.refresh_from_db()
         self.client.force_authenticate(self.user)
         self.assertEqual(self.client.get(reverse("pro-insights")).status_code, status.HTTP_200_OK)
@@ -251,9 +285,12 @@ class PaystackTests(APITestCase):
         self.assertEqual(self.client.get(reverse("pro-insights")).status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(Subscription.objects.get(user=self.user).status, "expired")
 
-    def test_plans_list_server_prices(self):
+    def test_plans_list_server_prices_and_credits(self):
         response = self.client.get(reverse("paystack-plans"))
-        self.assertEqual({p["plan"]: p["price_ngn"] for p in response.data}, {"monthly": 1500, "yearly": 15000})
+        tiers = {t["tier"]: (t["monthly_ngn"], t["yearly_ngn"], t["monthly_credits"]) for t in response.data["tiers"]}
+        self.assertEqual(tiers, {"pro": (3000, 30000, 250), "plus": (5000, 50000, 500), "care": (7000, 70000, 750)})
+        self.assertEqual(response.data["balance"]["tier"], "free")
+        self.assertEqual(response.data["topup"], {"credits": 100, "price_ngn": 800})
 
     def test_account_without_email_supplies_one_at_checkout(self):
         self.user.email = ""
@@ -268,3 +305,11 @@ class PaystackTests(APITestCase):
         self.assertEqual(init.call_args.kwargs["email"], "ada@example.com")
         self.user.refresh_from_db()
         self.assertEqual(self.user.email, "ada@example.com")
+
+    def test_payment_records_survive_account_deletion(self):
+        reference, _ = self.checkout()
+        self.pay(reference)
+        self.user.delete()
+        payment = PaystackPayment.objects.get(reference=reference)
+        self.assertIsNone(payment.user_id)
+        self.assertEqual(payment.status, "success")

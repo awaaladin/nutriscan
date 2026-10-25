@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     "apps.community",
     "apps.assistant",
     "apps.research",
+    "apps.health",
 ]
 
 MIDDLEWARE = [
@@ -207,9 +208,36 @@ PAYSTACK_SECRET_KEY = os.environ.get("PAYSTACK_SECRET_KEY", "") or os.environ.ge
 PAYSTACK_BASE_URL = os.environ.get("PAYSTACK_BASE_URL", "https://api.paystack.co")
 # This API's public URL: Paystack sends the payer back to /api/subscription/paystack/return/.
 PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "https://backend-flame-theta-28.vercel.app")
-# Whole naira per plan, and how long one payment lasts.
-PAYSTACK_PLAN_PRICES_NGN = {
-    "monthly": int(os.environ.get("PRO_MONTHLY_PRICE_NGN", "1500")),
-    "yearly": int(os.environ.get("PRO_YEARLY_PRICE_NGN", "15000")),
-}
+# How long one payment lasts. A year is charged as YEARLY_MONTHS_CHARGED months.
 PAYSTACK_PLAN_DAYS = {"monthly": 30, "yearly": 365}
+YEARLY_MONTHS_CHARGED = 10
+
+# --- Plans and AI credits (see apps.subscriptions.credits) ------------------
+# One credit is budgeted at about N5 of AI cost (a plain chat answer really costs about N2 on
+# Gemini Flash-Lite, a web-searched answer about N48), so a member who spends every credit on
+# the most expensive actions still leaves the margin worked out in docs/pricing.md.
+PRO_TIERS = {
+    "pro": {"label": "Pro", "monthly_ngn": 3000, "monthly_credits": 250},
+    "plus": {"label": "Pro Plus", "monthly_ngn": 5000, "monthly_credits": 500},
+    "care": {"label": "Pro Care", "monthly_ngn": 7000, "monthly_credits": 750},
+}
+FREE_MONTHLY_CREDITS = 25
+CREDIT_TOPUP = {"credits": 100, "price_ngn": 800}
+AI_CREDIT_COSTS = {
+    "chat": 1,
+    "chat_photos": 2,
+    "product_question": 1,
+    "research": 10,  # ~2 web searches at $0.014 each (~N48): 20x a plain answer
+    "meal_plan": 3,
+    "progress_report": 3,
+    "doctor_summary": 3,
+    "identify": 0,  # adding a missing product helps everyone: metered for cost, never charged
+}
+# Fair use: at most this many credits in any rolling hour, then an honest cooldown.
+AI_CREDITS_PER_HOUR = 40
+
+# For the owner's cost report only (manage.py ai_cost_report): Google's paid-tier prices in
+# USD per million tokens, matched on the model name, and the naira rate to convert at.
+GEMINI_PRICES_USD_PER_MILLION = {"flash-lite": (0.30, 2.50), "flash": (1.50, 7.50), "pro": (4.00, 20.00)}
+GEMINI_SEARCH_USD_PER_QUERY = 0.014
+USD_NGN_RATE = float(os.environ.get("USD_NGN_RATE", "1550"))

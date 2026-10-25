@@ -18,6 +18,7 @@ from apps.scans.models import Scan
 from apps.products.scoring_helpers import for_you, score_product
 
 from apps.research.knowledge import relevant_entries
+from apps.health.summary import readings_context
 
 from .prompts import NO_DATA_LINE
 
@@ -150,6 +151,10 @@ def build_context(user, message: str) -> str:
         lines += [f"- {p.name}" + (f" ({p.brand})" if p.brand else "") + f": {_verdict(p)}" for p in recent]
     else:
         lines.append("- none yet")
+
+    readings = readings_context(user)
+    if readings:
+        lines += ["", "THEIR LOGGED READINGS (measured at home; use them to make advice specific)"] + readings
 
     lines += ["", "PRODUCTS FROM OUR DATABASE THAT THEIR MESSAGE MENTIONS"]
     products = relevant_products(message)

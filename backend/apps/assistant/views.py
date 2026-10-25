@@ -13,11 +13,16 @@ from apps.products.identify_helpers import read_valid_photos
 
 from .context import build_context, emergency_notice
 from .models import ChatMessage, ChatThread
-from .prompts import SYSTEM_INSTRUCTION
+from apps.subscriptions import credits
+from apps.subscriptions.credits import CreditError
+
+from .prompts import RESEARCH_INSTRUCTION, SYSTEM_INSTRUCTION, is_trusted_source
 
 MAX_MESSAGE_CHARS = 1000
 MAX_IMAGES = 3
-HISTORY_TURNS = 10
+HISTORY_TURNS = 6
+RESEARCH_ANSWER_TOKENS = 1000
+RESEARCH_SOURCES = 8
 THREAD_LIST_LIMIT = 50
 
 
@@ -37,6 +42,8 @@ def message_data(message: ChatMessage) -> dict:
 class ChatSerializer(serializers.Serializer):
     message = serializers.CharField(required=False, allow_blank=True, max_length=MAX_MESSAGE_CHARS)
     thread_id = serializers.IntegerField(required=False, allow_null=True)
+    # Research mode (paid plans): live web search of trusted health sources, longer answer.
+    research = serializers.BooleanField(required=False, default=False)
 
 
 class ChatView(APIView):
@@ -63,6 +70,14 @@ class ChatView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         notice = emergency_notice(text)
+        research = serializer.validated_data["research"]
+        action = "research" if research else ("chat_photos" if uploads else "chat")
+        try:
+            if research:
+                credits.require_tier(request.user, "pro", "Research mode")
+            credits.ensure_can_spend(request.user, action)
+        except CreditError as exc:
+            return Response({**exc.as_response_data(), "notice": notice}, status=exc.status)
 
         thread = None
         thread_id = serializer.validated_data.get("thread_id")
@@ -89,12 +104,23 @@ class ChatView(APIView):
 
         context = build_context(request.user, text)
         try:
-            reply = generate(SYSTEM_INSTRUCTION + "\n\n" + context, history, text, photos)
+            reply = generate(
+                SYSTEM_INSTRUCTION + (RESEARCH_INSTRUCTION if research else "") + "\n\n" + context,
+                history, text, photos, max_history=HISTORY_TURNS, search=research,
+                max_answer_tokens=RESEARCH_ANSWER_TOKENS if research else 600,
+                max_sources=RESEARCH_SOURCES if research else 4,
+            )
         except IdentifyError as exc:
             http_status = (
                 status.HTTP_503_SERVICE_UNAVAILABLE if exc.reason == "ai_not_configured" else status.HTTP_502_BAD_GATEWAY
             )
             return Response({"detail": exc.message, "reason": exc.reason, "notice": notice}, status=http_status)
+
+        if research and not reply["web_research"]:
+            action = "chat_photos" if photos else "chat"  # search didn't run: charge a normal answer
+        credits.charge(request.user, action, reply.get("usage"))
+        for source in reply["sources"]:
+            source["trusted"] = is_trusted_source(source["title"]) or is_trusted_source(source["url"])
 
         training_ok = request.user.allow_training_use
         with transaction.atomic():
@@ -110,7 +136,10 @@ class ChatView(APIView):
             thread.save(update_fields=["updated_at"])
 
         return Response(
-            {"thread_id": thread.id, "title": thread.title, "message": message_data(answer), "notice": notice}
+            {
+                "thread_id": thread.id, "title": thread.title, "message": message_data(answer), "notice": notice,
+                "credits_left": credits.balance(request.user)["total_remaining"],
+            }
         )
 
 
