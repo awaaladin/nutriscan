@@ -137,6 +137,21 @@ fun LoginScreen(
                     color = NsGold300,
                 )
             }
+            if (!isRegisterMode) {
+                val context = androidx.compose.ui.platform.LocalContext.current
+                TextButton(
+                    onClick = {
+                        runCatching {
+                            context.startActivity(
+                                android.content.Intent(
+                                    android.content.Intent.ACTION_VIEW,
+                                    android.net.Uri.parse(com.nutriscan.app.BuildConfig.API_BASE_URL + "forgot-password/"),
+                                ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                            )
+                        }
+                    },
+                ) { Text("Forgot your password?", color = NsGold300) }
+            }
         }
     }
 }
