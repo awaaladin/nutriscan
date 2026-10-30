@@ -129,7 +129,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 REST_FRAMEWORK = {
     # Each "ask about this product" question costs an AI call.
-    "DEFAULT_THROTTLE_RATES": {"ask": "40/hour", "chat": "60/hour", "research": "30/hour", "corrections": "30/hour"},
+    "DEFAULT_THROTTLE_RATES": {"ask": "40/hour", "chat": "60/hour", "research": "30/hour", "corrections": "30/hour", "password-reset": "10/hour"},
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
@@ -208,6 +208,24 @@ PAYSTACK_SECRET_KEY = os.environ.get("PAYSTACK_SECRET_KEY", "") or os.environ.ge
 PAYSTACK_BASE_URL = os.environ.get("PAYSTACK_BASE_URL", "https://api.paystack.co")
 # This API's public URL: Paystack sends the payer back to /api/subscription/paystack/return/.
 PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "https://backend-flame-theta-28.vercel.app")
+
+# --- Email --------------------------------------------------------------------------------
+# Gmail SMTP until a domain is verified with a provider such as Resend (then only these settings change).
+# Without a password (local development) emails are printed to the console instead.
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "smtp.gmail.com")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "465"))
+EMAIL_USE_SSL = os.environ.get("EMAIL_USE_SSL", "true").lower() in ("1", "true", "yes")
+EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "false").lower() in ("1", "true", "yes") and not EMAIL_USE_SSL
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+EMAIL_TIMEOUT = 8  # Vercel stops a function at 10 seconds
+EMAIL_BACKEND = os.environ.get(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.smtp.EmailBackend" if EMAIL_HOST_PASSWORD else "django.core.mail.backends.console.EmailBackend",
+)
+DEFAULT_FROM_EMAIL = os.environ.get("EMAIL_FROM") or os.environ.get("DEFAULT_FROM_EMAIL") or "NutriScan <no-reply@nutriscan.local>"
+SERVER_EMAIL = DEFAULT_FROM_EMAIL
+SUPPORT_EMAIL = os.environ.get("SUPPORT_EMAIL") or EMAIL_HOST_USER or "support@nutriscan.local"
 # How long one payment lasts. A year is charged as YEARLY_MONTHS_CHARGED months.
 PAYSTACK_PLAN_DAYS = {"monthly": 30, "yearly": 365}
 YEARLY_MONTHS_CHARGED = 10

@@ -1,0 +1,7 @@
+{% extends "emails/base.html" %}
+{% block preheader %}Your NutriScan account is ready{% endblock %}
+{% block content %}
+<h1 style="margin:0 0 12px 0;font-size:22px;line-height:1.3;">Welcome to NutriScan</h1>
+<p style="margin:0 0 16px 0;">Hi {{ name }}, your account is ready.</p>
+<p style="margin:0;">Scan a product to see what is really in it, and ask the assistant anything about it.</p>
+{% endblock %}

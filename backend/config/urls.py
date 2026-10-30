@@ -35,12 +35,22 @@ from apps.subscriptions.views import (
     ProInsightsView,
     VerifySubscriptionView,
 )
-from apps.users.views import DeleteAccountView, PreferencesView, RegisterView
+from apps.users.views import (
+    DeleteAccountView,
+    PasswordResetConfirmView,
+    PasswordResetRequestView,
+    PreferencesView,
+    RegisterView,
+    reset_password_page,
+)
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/auth/register/", RegisterView.as_view(), name="register"),
     path("api/auth/login/", TokenObtainPairView.as_view(), name="login"),
+    path("api/auth/password-reset/", PasswordResetRequestView.as_view(), name="password-reset"),
+    path("api/auth/password-reset/confirm/", PasswordResetConfirmView.as_view(), name="password-reset-confirm"),
+    path("reset-password/<uid>/<token>/", reset_password_page, name="reset-password-page"),
     path("api/auth/login/refresh/", TokenRefreshView.as_view(), name="login-refresh"),
     path("api/scan/", ScanView.as_view(), name="scan"),
     path("api/products/submit/", ProductSubmissionView.as_view(), name="product-submit"),

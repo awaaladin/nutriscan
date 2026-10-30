@@ -89,6 +89,7 @@ def apply_paystack_transaction(reference: str, data: dict) -> PaystackPayment | 
         user = type(payment.user).objects.select_for_update().get(pk=payment.user_id)
         user.bonus_credits += payment.credits
         user.save(update_fields=["bonus_credits"])
+        _send_receipt(payment)
         return payment
 
     subscription, _ = Subscription.objects.select_for_update().get_or_create(user=payment.user)
@@ -105,4 +106,15 @@ def apply_paystack_transaction(reference: str, data: dict) -> PaystackPayment | 
     if not payment.user.is_pro:
         payment.user.is_pro = True
         payment.user.save(update_fields=["is_pro"])
+    _send_receipt(payment)
     return payment
+
+
+def _send_receipt(payment) -> None:
+    """The receipt email; it can never make a payment fail (see apps.users.mailer)."""
+    try:
+        from apps.users import mailer
+
+        mailer.send_receipt(payment)
+    except Exception:  # noqa: BLE001
+        log.exception("Could not prepare the receipt for %s", payment.reference)

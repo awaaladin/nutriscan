@@ -5,6 +5,11 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.subscriptions.services import refresh_pro_status
 
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.shortcuts import render
+from rest_framework.throttling import ScopedRateThrottle
+
+from . import mailer, password_reset
 from .serializers import DeleteAccountSerializer, PreferencesSerializer, RegisterSerializer
 
 
@@ -16,6 +21,7 @@ class RegisterView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+        mailer.send_welcome(user)  # after commit; an email problem never blocks signup
         refresh = RefreshToken.for_user(user)
         return Response(
             {
@@ -52,3 +58,50 @@ class DeleteAccountView(APIView):
             return Response({"detail": "That password isn't right."}, status=status.HTTP_400_BAD_REQUEST)
         request.user.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class PasswordResetRequestView(APIView):
+    """Always answers 200, so nobody can use it to find out which emails have accounts."""
+
+    permission_classes = [permissions.AllowAny]
+    authentication_classes: list = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "password-reset"
+
+    def post(self, request):
+        password_reset.request_reset(request.data.get("email", ""))
+        return Response({"detail": "If that email has an account, we sent a link to reset the password."})
+
+
+class PasswordResetConfirmView(APIView):
+    permission_classes = [permissions.AllowAny]
+    authentication_classes: list = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "password-reset"
+
+    def post(self, request):
+        try:
+            password_reset.confirm_reset(
+                request.data.get("uid", ""), request.data.get("token", ""), request.data.get("password", "")
+            )
+        except DjangoValidationError as exc:
+            return Response({"detail": " ".join(exc.messages)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": "Password changed. You can sign in now."})
+
+
+def reset_password_page(request, uid, token):
+    """The page the emailed link opens in the phone browser."""
+    if password_reset.user_for(uid, token) is None:
+        return render(request, "users/reset_password.html", {"invalid": True}, status=400)
+    errors = []
+    if request.method == "POST":
+        password, confirm = request.POST.get("password", ""), request.POST.get("confirm", "")
+        if password != confirm:
+            errors.append("The two passwords do not match.")
+        else:
+            try:
+                password_reset.confirm_reset(uid, token, password)
+                return render(request, "users/reset_password.html", {"done": True})
+            except DjangoValidationError as exc:
+                errors.extend(exc.messages)
+    return render(request, "users/reset_password.html", {"errors": errors})
