@@ -41,6 +41,7 @@ from apps.users.views import (
     PasswordResetRequestView,
     PreferencesView,
     RegisterView,
+    forgot_password_page,
     reset_password_page,
 )
 
@@ -51,6 +52,7 @@ urlpatterns = [
     path("api/auth/password-reset/", PasswordResetRequestView.as_view(), name="password-reset"),
     path("api/auth/password-reset/confirm/", PasswordResetConfirmView.as_view(), name="password-reset-confirm"),
     path("reset-password/<uid>/<token>/", reset_password_page, name="reset-password-page"),
+    path("forgot-password/", forgot_password_page, name="forgot-password-page"),
     path("api/auth/login/refresh/", TokenRefreshView.as_view(), name="login-refresh"),
     path("api/scan/", ScanView.as_view(), name="scan"),
     path("api/products/submit/", ProductSubmissionView.as_view(), name="product-submit"),

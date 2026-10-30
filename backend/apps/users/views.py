@@ -105,3 +105,23 @@ def reset_password_page(request, uid, token):
             except DjangoValidationError as exc:
                 errors.extend(exc.messages)
     return render(request, "users/reset_password.html", {"errors": errors})
+
+
+def forgot_password_page(request):
+    """The page the app opens from its "Forgot password?" link: asks for the email and sends the reset link."""
+    from django.http import HttpResponseNotAllowed
+
+    if request.method not in ("GET", "POST"):
+        return HttpResponseNotAllowed(["GET", "POST"])
+    from django.core.cache import cache
+
+    sent = False
+    if request.method == "POST":
+        forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[0].strip()
+        key = f"forgot-page:{forwarded or request.META.get('REMOTE_ADDR', '')}"
+        tries = cache.get(key, 0)
+        if tries < 10:  # an open "send an email" form must not be usable to flood someone's inbox
+            cache.set(key, tries + 1, 3600)
+            password_reset.request_reset(request.POST.get("email", ""))
+        sent = True  # the same answer whether or not the address has an account (or we declined to send)
+    return render(request, "users/forgot_password.html", {"sent": sent})

@@ -110,3 +110,16 @@ class PasswordResetTests(TestCase):
         APIClient().post("/api/auth/password-reset/", {"email": "reset@example.com"}, format="json")
         uid, token = self._parts()
         self.assertEqual(self.client.get(f"/reset-password/{uid}/{token[:-2]}xx/").status_code, 400)
+
+
+class ForgotPasswordPageTests(TestCase):
+    def test_the_page_sends_the_link_and_gives_the_same_answer_for_unknown_emails(self):
+        User.objects.create_user("known", "known@example.com", "Old-pass-12345!")
+        mail.outbox.clear()
+        self.assertEqual(self.client.get("/forgot-password/").status_code, 200)
+        known = self.client.post("/forgot-password/", {"email": "known@example.com"})
+        self.assertContains(known, "we just sent a link")
+        self.assertEqual(len(mail.outbox), 1)
+        unknown = self.client.post("/forgot-password/", {"email": "nobody@example.com"})
+        self.assertContains(unknown, "we just sent a link")
+        self.assertEqual(len(mail.outbox), 1)
