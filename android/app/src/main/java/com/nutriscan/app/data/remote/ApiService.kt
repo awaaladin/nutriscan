@@ -5,6 +5,12 @@ import com.nutriscan.app.data.model.AskRequest
 import com.nutriscan.app.data.model.AskResponse
 import com.nutriscan.app.data.model.CheckoutRequest
 import com.nutriscan.app.data.model.CheckoutResponse
+import com.nutriscan.app.data.model.CreditBalance
+import com.nutriscan.app.data.model.DeleteAccountRequest
+import com.nutriscan.app.data.model.HealthLog
+import com.nutriscan.app.data.model.HealthSummary
+import com.nutriscan.app.data.model.HealthToolRequest
+import com.nutriscan.app.data.model.HealthToolResponse
 import com.nutriscan.app.data.model.CorrectionRequest
 import com.nutriscan.app.data.model.CorrectionResponse
 import com.nutriscan.app.data.model.SearchResponse
@@ -19,7 +25,7 @@ import com.nutriscan.app.data.model.LoginRequest
 import com.nutriscan.app.data.model.PaymentStatus
 import com.nutriscan.app.data.model.PreferencesUpdateRequest
 import com.nutriscan.app.data.model.ProInsights
-import com.nutriscan.app.data.model.ProPlan
+import com.nutriscan.app.data.model.PlansResponse
 import com.nutriscan.app.data.model.Product
 import com.nutriscan.app.data.model.ProductSubmissionRequest
 import com.nutriscan.app.data.model.RegisterRequest
@@ -36,6 +42,7 @@ import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.HTTP
 import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
@@ -102,6 +109,8 @@ interface ApiService {
         @Part("message") message: RequestBody,
         // Null starts a new conversation.
         @Part("thread_id") threadId: RequestBody?,
+        // "true" turns on Research mode (paid plans): live search of trusted health sources.
+        @Part("research") research: RequestBody?,
         // Up to 3 photos (food pack, nutrition table, medicine box...); sent for this answer only.
         @Part images: List<MultipartBody.Part>,
     ): Response<ChatReply>
@@ -165,7 +174,28 @@ interface ApiService {
     suspend fun updatePreferences(@Body request: PreferencesUpdateRequest): Response<UserPreferences>
 
     @GET("api/subscription/paystack/plans/")
-    suspend fun getProPlans(): Response<List<ProPlan>>
+    suspend fun getPlans(): Response<PlansResponse>
+
+    @GET("api/credits/")
+    suspend fun getCredits(): Response<CreditBalance>
+
+    @GET("api/health/logs/")
+    suspend fun getHealthLogs(@Query("kind") kind: String): Response<List<HealthLog>>
+
+    @POST("api/health/logs/")
+    suspend fun addHealthLog(@Body log: HealthLog): Response<HealthLog>
+
+    @DELETE("api/health/logs/{id}/")
+    suspend fun deleteHealthLog(@Path("id") id: Int): Response<Unit>
+
+    @GET("api/health/summary/")
+    suspend fun getHealthSummary(): Response<HealthSummary>
+
+    @POST("api/health/{tool}/")
+    suspend fun runHealthTool(@Path("tool") tool: String, @Body request: HealthToolRequest): Response<HealthToolResponse>
+
+    @HTTP(method = "DELETE", path = "api/user/account/", hasBody = true)
+    suspend fun deleteAccount(@Body request: DeleteAccountRequest): Response<Unit>
 
     @POST("api/subscription/paystack/checkout/")
     suspend fun startCheckout(@Body request: CheckoutRequest): Response<CheckoutResponse>

@@ -135,6 +135,8 @@ data class RegisterRequest(
     val password: String,
     val region: String = "NG",
     val primary_goal: String = "general_health",
+    val accept_terms: Boolean = false,
+    val health_consent: Boolean = false,
 )
 
 data class LoginRequest(val username: String, val password: String)
@@ -150,6 +152,13 @@ data class UserPreferences(
     val has_hypertension: Boolean = false,
     val region: String = "NG",
     val is_pro: Boolean = false,
+    /** "free", "pro", "plus" or "care". */
+    val tier: String = "free",
+    val bonus_credits: Int = 0,
+    val height_cm: Int? = null,
+    val target_weight_kg: Double? = null,
+    val terms_accepted_at: String? = null,
+    val health_consent_at: String? = null,
 )
 
 data class PreferencesUpdateRequest(
@@ -157,6 +166,10 @@ data class PreferencesUpdateRequest(
     val is_diabetic: Boolean? = null,
     val has_hypertension: Boolean? = null,
     val region: String? = null,
+    val height_cm: Int? = null,
+    val target_weight_kg: Double? = null,
+    val accept_terms: Boolean? = null,
+    val health_consent: Boolean? = null,
 )
 
 data class RegisterResponse(
@@ -173,19 +186,103 @@ data class ProductSubmissionRequest(
     val ingredients_text: String,
 )
 
-/** A Pro plan sold through the web checkout, priced by the server. */
-data class ProPlan(
-    val plan: String,
+/** One paid plan, priced by the server. Each tier includes everything below it. */
+data class TierInfo(
+    val tier: String,
     val label: String,
-    val price_ngn: Int,
-    val days: Int,
+    val monthly_ngn: Int,
+    val yearly_ngn: Int,
+    val monthly_credits: Int,
+    val features: List<String> = emptyList(),
 )
 
-/** [email] is only sent for accounts registered without one: Paystack needs it for the receipt. */
-data class CheckoutRequest(val plan: String, val email: String? = null)
+data class TopUp(val credits: Int, val price_ngn: Int)
+
+/** What the user has left. Monthly credits renew on [renews_on]; bought ones never expire. */
+data class CreditBalance(
+    val tier: String = "free",
+    val monthly_allowance: Int = 0,
+    val used_this_month: Int = 0,
+    val monthly_remaining: Int = 0,
+    val bonus_credits: Int = 0,
+    val total_remaining: Int = 0,
+    val renews_on: String = "",
+    val costs: Map<String, Int> = emptyMap(),
+)
+
+data class PlansResponse(
+    val tiers: List<TierInfo>,
+    val free_monthly_credits: Int,
+    val topup: TopUp,
+    val credit_costs: Map<String, Int> = emptyMap(),
+    val balance: CreditBalance,
+)
+
+/** A plan period ([kind] "subscription": [tier] + [plan] monthly/yearly) or a credit top-up
+ * ([kind] "credits"). [email] is only sent for accounts registered without one. */
+data class CheckoutRequest(
+    val kind: String = "subscription",
+    val tier: String = "pro",
+    val plan: String = "monthly",
+    val email: String? = null,
+)
 
 /** [authorization_url] is Paystack's payment page, opened in the browser rather than the app. */
 data class CheckoutResponse(val reference: String, val authorization_url: String)
+
+/** One reading the user logged: weight (kg), blood pressure, or blood glucose (mg/dL). */
+data class HealthLog(
+    val id: Int? = null,
+    val kind: String,
+    val value: Double? = null,
+    val systolic: Int? = null,
+    val diastolic: Int? = null,
+    val timing: String = "",
+    val note: String = "",
+    val measured_at: String? = null,
+    /** An urgent warning for a dangerous reading, from the server. */
+    val alert: String? = null,
+)
+
+data class WeightSummary(
+    val count: Int,
+    val latest_kg: Double,
+    val change_kg: Double,
+    val bmi: Double? = null,
+    val target_kg: Double? = null,
+    val to_target_kg: Double? = null,
+)
+
+data class PressureSummary(val count: Int, val latest: String, val avg_7d: String, val in_target_pct: Int, val target: String)
+
+data class GlucoseSummary(
+    val count: Int,
+    val latest_mg_dl: Double,
+    val latest_timing: String = "",
+    val avg_fasting_mg_dl: Double? = null,
+    val avg_after_meal_mg_dl: Double? = null,
+    val in_target_pct: Int,
+    val lows: Int,
+    val target: String,
+)
+
+data class HealthSummary(
+    val tier: String = "free",
+    val weight: WeightSummary? = null,
+    val blood_pressure: PressureSummary? = null,
+    val glucose: GlucoseSummary? = null,
+    val alerts: List<String> = emptyList(),
+    /** Which trackers and AI tools the plan unlocks, by kind/tool name. */
+    val unlocked: Map<String, Boolean> = emptyMap(),
+    val height_cm: Int? = null,
+    val target_weight_kg: Double? = null,
+)
+
+data class HealthToolRequest(val note: String = "")
+
+data class HealthToolResponse(val tool: String, val text: String, val credits_left: Int? = null)
+
+data class DeleteAccountRequest(val password: String)
 
 /** Pro is only ever switched on from what Paystack reports to the server, never by the app. */
 data class PaymentStatus(val reference: String, val status: String, val is_pro: Boolean)
@@ -221,7 +318,8 @@ data class AskTurn(val role: String, val text: String)
 
 data class AskRequest(val question: String, val history: List<AskTurn> = emptyList())
 
-data class AskSource(val title: String, val url: String)
+/** [trusted] marks a credible health source (WHO, NIH, NAFDAC, ADA...) in Research mode answers. */
+data class AskSource(val title: String, val url: String, val trusted: Boolean = false)
 
 /** [web_research] is false when the answer came from our own data and the AI's
  * knowledge only (live web search wasn't available). */
@@ -252,6 +350,7 @@ data class ChatReply(
     val title: String,
     val message: ChatMessageDto,
     val notice: String? = null,
+    val credits_left: Int? = null,
 )
 
 data class ChatThreadSummary(val id: Int, val title: String, val updated_at: String = "")

@@ -3,6 +3,7 @@ package com.nutriscan.app.ui.screens
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,10 +21,13 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.WorkspacePremium
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -33,36 +37,40 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.nutriscan.app.data.model.CheckoutRequest
-import com.nutriscan.app.data.model.ProPlan
+import com.nutriscan.app.data.model.PlansResponse
+import com.nutriscan.app.data.model.TierInfo
 import com.nutriscan.app.data.repository.EmailRequiredException
 import com.nutriscan.app.data.repository.NutriScanRepository
+import com.nutriscan.app.ui.components.Legal
 import com.nutriscan.app.ui.components.NsButton
 import com.nutriscan.app.ui.components.NsScreenScaffold
+import com.nutriscan.app.ui.components.openUrl
 import com.nutriscan.app.ui.theme.NsGold500
 import kotlinx.coroutines.launch
 import java.util.Locale
 
-private val freeFeatures = listOf("Barcode scanning", "WHO health score", "Diabetic risk tier")
-private val proFeatures = listOf("Personalized avoid-list", "Scan pattern tracking", "Priority product submissions")
+private val TIER_RANK = mapOf("free" to 0, "pro" to 1, "plus" to 2, "care" to 3)
 
-/** Pro is paid for on the web, not in the app: the button opens Paystack's checkout page in the
- * browser (card, bank transfer, USSD). When the user comes back, the app asks the server to
- * confirm the payment with Paystack; the webhook switches Pro on as well if they never return. */
+/** NutriScan's plans, paid for on the web, not in the app: a button opens Paystack's checkout page
+ * in the browser (card, bank transfer, USSD). When the user comes back, the app asks the server to
+ * confirm the payment with Paystack; the webhook switches the plan on as well if they never return. */
 @Composable
 fun SubscriptionScreen(repository: NutriScanRepository, onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var plans by remember { mutableStateOf<List<ProPlan>>(emptyList()) }
-    var plansFailed by remember { mutableStateOf(false) }
-    var isPro by remember { mutableStateOf(false) }
+    var data by remember { mutableStateOf<PlansResponse?>(null) }
+    var loadFailed by remember { mutableStateOf(false) }
+    var yearly by rememberSaveable { mutableStateOf(false) }
     var isProcessing by remember { mutableStateOf(false) }
     var statusMessage by remember { mutableStateOf<String?>(null) }
     // Saveable: Android may kill the app while the browser is open.
@@ -70,11 +78,9 @@ fun SubscriptionScreen(repository: NutriScanRepository, onBack: () -> Unit) {
     var needsEmail by rememberSaveable { mutableStateOf(false) }
     var email by rememberSaveable { mutableStateOf("") }
 
-    suspend fun loadPlans() {
-        plansFailed = false
-        repository.proPlans()
-            .onSuccess { plans = it }
-            .onFailure { plansFailed = true }
+    suspend fun load() {
+        loadFailed = false
+        repository.plans().onSuccess { data = it }.onFailure { loadFailed = true }
     }
 
     suspend fun checkPending() {
@@ -82,29 +88,29 @@ fun SubscriptionScreen(repository: NutriScanRepository, onBack: () -> Unit) {
         isProcessing = true
         repository.verifyPayment(reference)
             .onSuccess {
-                when {
-                    it.is_pro && it.status == "success" -> {
-                        isPro = true
+                when (it.status) {
+                    "success" -> {
                         pendingReference = null
-                        statusMessage = "Payment received. NutriScan Pro is active."
+                        statusMessage = "Payment received. Thank you!"
+                        load()
                     }
-                    it.status == "failed" -> {
+                    "failed" -> {
                         pendingReference = null
                         statusMessage = "That payment wasn't accepted. Contact support with reference $reference."
                     }
-                    else -> statusMessage = "Payment not confirmed yet. If you paid, Pro switches on within a few minutes."
+                    else -> statusMessage = "Payment not confirmed yet. If you paid, it switches on within a few minutes."
                 }
             }
             .onFailure { statusMessage = it.message }
         isProcessing = false
     }
 
-    fun pay(plan: ProPlan) {
+    fun pay(request: CheckoutRequest) {
         scope.launch {
             isProcessing = true
             statusMessage = null
-            val request = CheckoutRequest(plan = plan.plan, email = email.trim().takeIf { needsEmail && it.isNotEmpty() })
-            repository.startCheckout(request)
+            val withEmail = request.copy(email = email.trim().takeIf { needsEmail && it.isNotEmpty() })
+            repository.startCheckout(withEmail)
                 .onSuccess { checkout ->
                     pendingReference = checkout.reference
                     try {
@@ -123,11 +129,8 @@ fun SubscriptionScreen(repository: NutriScanRepository, onBack: () -> Unit) {
     }
 
     LaunchedEffect(Unit) {
-        repository.getPreferences().onSuccess { prefs ->
-            isPro = prefs.is_pro
-            needsEmail = prefs.email.isNullOrBlank()
-        }
-        loadPlans()
+        repository.getPreferences().onSuccess { needsEmail = it.email.isNullOrBlank() }
+        load()
     }
 
     // Coming back from the browser: confirm the payment that was just made.
@@ -146,63 +149,102 @@ fun SubscriptionScreen(repository: NutriScanRepository, onBack: () -> Unit) {
         actions = { Icon(Icons.Rounded.WorkspacePremium, contentDescription = null, tint = NsGold500) },
     ) { padding ->
     Column(
-        modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(24.dp),
+        modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(20.dp),
     ) {
-        FeatureCard(title = "Free", features = freeFeatures, highlighted = false)
-        Spacer(Modifier.height(12.dp))
-        FeatureCard(title = "Pro", features = proFeatures, highlighted = true)
-        Spacer(Modifier.height(24.dp))
-        statusMessage?.let {
-            Text(it, style = MaterialTheme.typography.bodyMedium)
-            Spacer(Modifier.height(12.dp))
-        }
+        val plans = data
         when {
-            isPro -> Text(
-                "You're a Pro member. Paying again adds another period after your current one ends.",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            pendingReference != null -> NsButton(
-                enabled = !isProcessing,
-                text = if (isProcessing) "Checking…" else "I've paid, check now",
-                onClick = { scope.launch { checkPending() } },
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-        Spacer(Modifier.height(12.dp))
-        if (needsEmail) {
-            OutlinedTextField(
-                value = email,
-                onValueChange = { email = it },
-                label = { Text("Email for your receipt") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Spacer(Modifier.height(12.dp))
-        }
-        when {
-            plansFailed -> NsButton(
+            loadFailed -> NsButton(
                 text = "Couldn't load plans. Try again",
-                onClick = { scope.launch { loadPlans() } },
+                onClick = { scope.launch { load() } },
                 modifier = Modifier.fillMaxWidth(),
             )
-            plans.isEmpty() -> Text("Loading plans…", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            plans == null -> Text("Loading plans…", color = MaterialTheme.colorScheme.onSurfaceVariant)
             else -> {
-                plans.forEach { plan ->
-                    NsButton(
-                        enabled = !isProcessing && (!needsEmail || email.contains("@")),
-                        text = if (isProcessing) "Please wait…" else "Pay ${naira(plan.price_ngn)}: ${plan.label}",
-                        onClick = { pay(plan) },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(Modifier.height(8.dp))
-                }
+                val balance = plans.balance
+                val current = balance.tier
                 Text(
-                    "You'll pay securely on Paystack's website with card, bank transfer or USSD. " +
-                        "Pro is prepaid and doesn't renew automatically.",
+                    if (current == "free") "You're on the free plan" else "You're on NutriScan ${plans.tiers.first { it.tier == current }.label}",
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    "${balance.total_remaining} AI credits left · monthly credits renew ${balance.renews_on}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                Spacer(Modifier.height(12.dp))
+                statusMessage?.let {
+                    Text(it, style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.height(8.dp))
+                }
+                if (pendingReference != null) {
+                    NsButton(
+                        enabled = !isProcessing,
+                        text = if (isProcessing) "Checking…" else "I've paid, check now",
+                        onClick = { scope.launch { checkPending() } },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(Modifier.height(12.dp))
+                }
+                if (needsEmail) {
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = { email = it },
+                        label = { Text("Email for your receipt") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(Modifier.height(12.dp))
+                }
+                Row {
+                    FilterChip(selected = !yearly, onClick = { yearly = false }, label = { Text("Monthly") })
+                    Spacer(Modifier.width(8.dp))
+                    FilterChip(selected = yearly, onClick = { yearly = true }, label = { Text("Yearly: 2 months free") })
+                }
+                Spacer(Modifier.height(8.dp))
+                val canPay = !isProcessing && (!needsEmail || email.contains("@"))
+                plans.tiers.forEach { tier ->
+                    TierCard(
+                        tier = tier,
+                        yearly = yearly,
+                        isCurrent = tier.tier == current,
+                        // A smaller plan can only be bought after the current one ends.
+                        enabled = canPay && (TIER_RANK[tier.tier] ?: 0) >= (TIER_RANK[current] ?: 0),
+                        onPay = { pay(CheckoutRequest(tier = tier.tier, plan = if (yearly) "yearly" else "monthly")) },
+                    )
+                    Spacer(Modifier.height(12.dp))
+                }
+                Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("Need more AI this month?", style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            "${plans.topup.credits} extra credits that never expire, used after your monthly ones.",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedButton(enabled = canPay, onClick = { pay(CheckoutRequest(kind = "credits")) }) {
+                            Text("Buy ${plans.topup.credits} credits for ${naira(plans.topup.price_ngn)}")
+                        }
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    "Free plan: scanning, health scores, the diabetic risk tier and ${plans.free_monthly_credits} AI credits a month. " +
+                        "A chat answer uses 1 credit, with photos 2, a Research mode answer 10, a meal plan or report 3.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "You pay securely on Paystack's website with card, bank transfer or USSD. Plans are prepaid and do not " +
+                        "renew automatically. NutriScan gives general information, not medical advice.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Row {
+                    TextButton(onClick = { context.openUrl(Legal.TERMS) }) { Text("Terms and refunds") }
+                    TextButton(onClick = { context.openUrl(Legal.PRIVACY) }) { Text("Privacy") }
+                }
             }
         }
     }
@@ -212,29 +254,45 @@ fun SubscriptionScreen(repository: NutriScanRepository, onBack: () -> Unit) {
 private fun naira(amount: Int) = "₦" + String.format(Locale.US, "%,d", amount)
 
 @Composable
-private fun FeatureCard(title: String, features: List<String>, highlighted: Boolean) {
+private fun TierCard(tier: TierInfo, yearly: Boolean, isCurrent: Boolean, enabled: Boolean, onPay: () -> Unit) {
+    val highlighted = tier.tier == "care"
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
+        border = if (isCurrent) BorderStroke(2.dp, NsGold500) else null,
         colors = CardDefaults.cardColors(
             containerColor = if (highlighted) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant,
         ),
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(12.dp))
-            features.forEach { feature ->
+        Column(modifier = Modifier.padding(18.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(tier.label, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                if (isCurrent) Text("Your plan", color = NsGold500, style = MaterialTheme.typography.labelMedium)
+            }
+            Text(
+                if (yearly) "${naira(tier.yearly_ngn)} a year" else "${naira(tier.monthly_ngn)} a month",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+            )
+            Text("${tier.monthly_credits} AI credits every month", style = MaterialTheme.typography.bodySmall)
+            Spacer(Modifier.height(10.dp))
+            tier.features.forEach { feature ->
                 Row(modifier = Modifier.padding(vertical = 3.dp)) {
-                    Icon(
-                        Icons.Rounded.Check,
-                        contentDescription = null,
-                        tint = if (highlighted) NsGold500 else MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.height(20.dp),
-                    )
+                    Icon(Icons.Rounded.Check, contentDescription = null, tint = NsGold500, modifier = Modifier.height(20.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(feature, style = MaterialTheme.typography.bodyMedium)
                 }
             }
+            Spacer(Modifier.height(12.dp))
+            NsButton(
+                enabled = enabled,
+                text = when {
+                    isCurrent -> "Add another ${if (yearly) "year" else "month"}"
+                    else -> "Get ${tier.label}"
+                },
+                onClick = onPay,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }

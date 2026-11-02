@@ -9,6 +9,12 @@ import com.nutriscan.app.data.model.AskResponse
 import com.nutriscan.app.data.model.AskTurn
 import com.nutriscan.app.data.model.CheckoutRequest
 import com.nutriscan.app.data.model.CheckoutResponse
+import com.nutriscan.app.data.model.CreditBalance
+import com.nutriscan.app.data.model.DeleteAccountRequest
+import com.nutriscan.app.data.model.HealthLog
+import com.nutriscan.app.data.model.HealthSummary
+import com.nutriscan.app.data.model.HealthToolRequest
+import com.nutriscan.app.data.model.HealthToolResponse
 import com.nutriscan.app.data.model.CorrectionRequest
 import com.nutriscan.app.data.model.CorrectionResponse
 import com.nutriscan.app.data.model.SearchResponse
@@ -23,7 +29,7 @@ import com.nutriscan.app.data.model.LoginRequest
 import com.nutriscan.app.data.model.PaymentStatus
 import com.nutriscan.app.data.model.PreferencesUpdateRequest
 import com.nutriscan.app.data.model.ProInsights
-import com.nutriscan.app.data.model.ProPlan
+import com.nutriscan.app.data.model.PlansResponse
 import com.nutriscan.app.data.model.ProductSubmissionRequest
 import com.nutriscan.app.data.model.RegisterRequest
 import com.nutriscan.app.data.model.RegisterResponse
@@ -48,7 +54,8 @@ import java.net.SocketTimeoutException
 
 /** A failed assistant request. [notice] is the server's fixed safety message for
  * emergency-sounding questions; it must be shown even though the AI could not answer. */
-class ChatException(message: String, val notice: String?) : Exception(message)
+/** [reason] is the server's code, e.g. "out_of_credits", "upgrade_required", "cooldown". */
+class ChatException(message: String, val notice: String?, val reason: String? = null) : Exception(message)
 
 sealed class ScanOutcome {
     data class Success(val result: ScanResponse) : ScanOutcome()
@@ -281,17 +288,19 @@ class NutriScanRepository(
 
     /** One turn of the assistant conversation. Failures are [ChatException]s carrying the
      * server's reason and, for emergency-sounding questions, the safety notice. */
-    suspend fun chat(threadId: Int?, message: String, photos: List<File>): Result<ChatReply> = try {
+    suspend fun chat(threadId: Int?, message: String, photos: List<File>, research: Boolean = false): Result<ChatReply> = try {
         fun text(value: String) = value.toRequestBody("text/plain".toMediaType())
         val parts = photos.map {
             MultipartBody.Part.createFormData("images", it.name, it.asRequestBody("image/jpeg".toMediaType()))
         }
-        val response = api.assistantChat(text(message), threadId?.let { text(it.toString()) }, parts)
+        val response = api.assistantChat(
+            text(message), threadId?.let { text(it.toString()) }, if (research) text("true") else null, parts,
+        )
         if (response.isSuccessful) {
             Result.success(requireNotNull(response.body()))
         } else {
             val error = parseServerError(response) // read once: the body can't be re-read
-            Result.failure(ChatException(describeFailure(response.code(), error), error?.notice))
+            Result.failure(ChatException(describeFailure(response.code(), error), error?.notice, error?.reason))
         }
     } catch (e: SocketTimeoutException) {
         Result.failure(ChatException("The assistant is taking too long to answer. Please try again.", null))
@@ -414,10 +423,59 @@ class NutriScanRepository(
         if (!response.isSuccessful) error(friendlyErrorMessage(response.code()))
     }
 
-    suspend fun proPlans(): Result<List<ProPlan>> = runCatching {
-        val response = api.getProPlans()
+    suspend fun plans(): Result<PlansResponse> = runCatching {
+        val response = api.getPlans()
         if (!response.isSuccessful) error(friendlyErrorMessage(response.code()))
         requireNotNull(response.body())
+    }
+
+    suspend fun credits(): Result<CreditBalance> = runCatching {
+        val response = api.getCredits()
+        if (!response.isSuccessful) error(friendlyErrorMessage(response.code()))
+        requireNotNull(response.body())
+    }
+
+    suspend fun healthLogs(kind: String): Result<List<HealthLog>> = runCatching {
+        val response = api.getHealthLogs(kind)
+        if (!response.isSuccessful) error(describeFailure(response))
+        requireNotNull(response.body())
+    }
+
+    /** Fails with [PlanRequiredException] when the user's plan doesn't include this tracker. */
+    suspend fun addHealthLog(log: HealthLog): Result<HealthLog> = runCatching {
+        val response = api.addHealthLog(log)
+        if (!response.isSuccessful) throw failureOf(response)
+        requireNotNull(response.body())
+    }
+
+    suspend fun deleteHealthLog(id: Int): Result<Unit> = runCatching {
+        val response = api.deleteHealthLog(id)
+        if (!response.isSuccessful) error(describeFailure(response))
+    }
+
+    suspend fun healthSummary(): Result<HealthSummary> = runCatching {
+        val response = api.getHealthSummary()
+        if (!response.isSuccessful) error(describeFailure(response))
+        requireNotNull(response.body())
+    }
+
+    suspend fun runHealthTool(tool: String, note: String = ""): Result<HealthToolResponse> = runCatching {
+        val response = api.runHealthTool(tool, HealthToolRequest(note))
+        if (!response.isSuccessful) throw failureOf(response)
+        requireNotNull(response.body())
+    }
+
+    /** Erases the account on the server, then signs out here. */
+    suspend fun deleteAccount(password: String): Result<Unit> = runCatching {
+        val response = api.deleteAccount(DeleteAccountRequest(password))
+        if (!response.isSuccessful) error(describeFailure(response))
+        logout()
+    }
+
+    private fun failureOf(response: retrofit2.Response<*>): Exception {
+        val error = parseServerError(response) // read once: the body can't be re-read
+        val message = describeFailure(response.code(), error)
+        return if (error?.reason in PLAN_REASONS) PlanRequiredException(message, error?.reason) else IllegalStateException(message)
     }
 
     suspend fun startCheckout(request: CheckoutRequest): Result<CheckoutResponse> = runCatching {
@@ -445,3 +503,8 @@ class NutriScanRepository(
 
 /** The account has no email yet, and Paystack needs one before it can take the payment. */
 class EmailRequiredException(message: String) : Exception(message)
+
+/** Reasons that mean "this needs a bigger plan or more credits": the app offers the plans screen. */
+val PLAN_REASONS = setOf("upgrade_required", "out_of_credits")
+
+class PlanRequiredException(message: String, val reason: String?) : Exception(message)

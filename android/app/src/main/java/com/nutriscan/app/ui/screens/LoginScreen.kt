@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -25,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import com.nutriscan.app.data.model.RegisterRequest
 import com.nutriscan.app.data.repository.NutriScanRepository
 import com.nutriscan.app.ui.components.AnimatedGradientBackground
+import com.nutriscan.app.ui.components.ConsentChecks
 import com.nutriscan.app.ui.components.NsButton
 import com.nutriscan.app.ui.theme.NsCream
 import com.nutriscan.app.ui.theme.NsEmerald900
@@ -43,6 +46,8 @@ fun LoginScreen(
     var password by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
+    var acceptTerms by remember { mutableStateOf(false) }
+    var healthConsent by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     val fieldColors = OutlinedTextFieldDefaults.colors(
@@ -57,7 +62,7 @@ fun LoginScreen(
 
     AnimatedGradientBackground(colors = listOf(NsEmerald900, Color(0xFF123D2C), NsEmerald900)) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(24.dp),
+            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
             verticalArrangement = Arrangement.Center,
         ) {
             Text(
@@ -105,9 +110,16 @@ fun LoginScreen(
                 Spacer(Modifier.height(12.dp))
                 Text(it, color = MaterialTheme.colorScheme.error)
             }
+            if (isRegisterMode) {
+                Spacer(Modifier.height(12.dp))
+                ConsentChecks(
+                    acceptTerms, { acceptTerms = it }, healthConsent, { healthConsent = it },
+                    textColor = NsCream, accent = NsGold300,
+                )
+            }
             Spacer(Modifier.height(24.dp))
             NsButton(
-                enabled = !isLoading,
+                enabled = !isLoading && (!isRegisterMode || (acceptTerms && healthConsent)),
                 text = when {
                     isLoading -> "Please wait…"
                     isRegisterMode -> "Sign up"
@@ -118,7 +130,10 @@ fun LoginScreen(
                     isLoading = true
                     scope.launch {
                         val result = if (isRegisterMode) {
-                            repository.register(RegisterRequest(username, email, password, primary_goal = defaultGoal))
+                            repository.register(RegisterRequest(
+                                    username, email, password, primary_goal = defaultGoal,
+                                    accept_terms = acceptTerms, health_consent = healthConsent,
+                                ))
                                 .map { }
                         } else {
                             repository.login(username, password).map { }
@@ -142,13 +157,11 @@ fun LoginScreen(
                 TextButton(
                     onClick = {
                         runCatching {
-                            context.startActivity(
-                                android.content.Intent(
-                                    android.content.Intent.ACTION_VIEW,
-                                    android.net.Uri.parse(com.nutriscan.app.BuildConfig.API_BASE_URL + "forgot-password/"),
-                                ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
-                            )
-                        }
+                        context.startActivity(
+                            android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(com.nutriscan.app.BuildConfig.API_BASE_URL + "forgot-password/"))
+                                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                        )
+                    }
                     },
                 ) { Text("Forgot your password?", color = NsGold300) }
             }

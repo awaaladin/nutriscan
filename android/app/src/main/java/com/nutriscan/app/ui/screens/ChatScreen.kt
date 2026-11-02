@@ -33,6 +33,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.AddAPhoto
+import androidx.compose.material.icons.rounded.Science
+import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Mic
@@ -48,6 +50,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -76,6 +79,7 @@ import coil.compose.AsyncImage
 import com.nutriscan.app.data.local.AppPreferencesManager
 import com.nutriscan.app.data.model.AskSource
 import com.nutriscan.app.data.repository.ChatException
+import com.nutriscan.app.data.repository.PLAN_REASONS
 import com.nutriscan.app.data.repository.NutriScanRepository
 import com.nutriscan.app.ui.components.NsScreenScaffold
 import com.nutriscan.app.ui.theme.NsAmber
@@ -124,6 +128,7 @@ fun ChatScreen(
     threadId: Int?,
     onBack: () -> Unit,
     onOpenThreads: () -> Unit,
+    onOpenPlans: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -144,6 +149,18 @@ fun ChatScreen(
     var speakingIndex by remember { mutableStateOf<Int?>(null) }
     var showAttachMenu by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
+    // Research mode (paid plans): live search of trusted health sources, costs 10 credits.
+    var research by remember { mutableStateOf(false) }
+    var creditsLeft by remember { mutableStateOf<Int?>(null) }
+    var tier by remember { mutableStateOf("free") }
+    var needsPlan by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        repository.credits().onSuccess {
+            creditsLeft = it.total_remaining
+            tier = it.tier
+        }
+    }
 
     // Reopen a saved conversation.
     LaunchedEffect(threadId) {
@@ -217,12 +234,14 @@ fun ChatScreen(
         input = ""
         attachments.clear()
         error = null
+        needsPlan = false
         sending = true
         scope.launch {
-            repository.chat(activeThread, trimmed, photos)
+            repository.chat(activeThread, trimmed, photos, research)
                 .onSuccess { reply ->
                     activeThread = reply.thread_id
                     notice = reply.notice
+                    reply.credits_left?.let { creditsLeft = it }
                     messages += UiMessage(
                         reply.message.id, false, reply.message.text,
                         sources = reply.message.sources, webResearch = reply.message.web_research,
@@ -240,6 +259,7 @@ fun ChatScreen(
                     attachments.addAll(photos)
                     error = failure.message ?: "Something went wrong. Please try again."
                     notice = (failure as? ChatException)?.notice
+                    needsPlan = (failure as? ChatException)?.reason in PLAN_REASONS
                 }
             sending = false
         }
@@ -340,7 +360,17 @@ fun ChatScreen(
                                     )
                                     message.sources.forEach { source ->
                                         TextButton(onClick = { uriHandler.openUri(source.url) }) {
-                                            Text(source.title, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                                            if (source.trusted) {
+                                                Icon(
+                                                    Icons.Rounded.Verified, contentDescription = "Trusted health source",
+                                                    tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp),
+                                                )
+                                                Spacer(Modifier.width(4.dp))
+                                            }
+                                            Text(
+                                                source.title + if (source.trusted) " · trusted source" else "",
+                                                style = MaterialTheme.typography.labelSmall, maxLines = 1,
+                                            )
                                         }
                                     }
                                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -384,13 +414,18 @@ fun ChatScreen(
                             CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                if (messages.lastOrNull()?.photos?.isNotEmpty() == true) "Reading your photo…" else "Researching…",
+                                when {
+                                    messages.lastOrNull()?.photos?.isNotEmpty() == true -> "Reading your photo…"
+                                    research -> "Researching trusted sources…"
+                                    else -> "Thinking…"
+                                },
                                 style = MaterialTheme.typography.bodySmall,
                             )
                         }
                     }
                 }
                 error?.let { item { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) } }
+                if (needsPlan) item { TextButton(onClick = onOpenPlans) { Text("See plans and top-ups") } }
                 item { Spacer(Modifier.height(8.dp)) }
             }
 
@@ -414,6 +449,32 @@ fun ChatScreen(
                             ) { Icon(Icons.Rounded.Close, contentDescription = "Remove photo") }
                         }
                     }
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                FilterChip(
+                    selected = research,
+                    onClick = {
+                        if (tier == "free") {
+                            error = "Research mode searches trusted health sources (WHO, NIH, NAFDAC, ADA) and cites them. It's part of every Pro plan."
+                            needsPlan = true
+                        } else {
+                            research = !research
+                        }
+                    },
+                    leadingIcon = { Icon(Icons.Rounded.Science, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                    label = { Text(if (research) "Research mode on (10 credits)" else "Research mode") },
+                )
+                Spacer(Modifier.weight(1f))
+                creditsLeft?.let {
+                    Text(
+                        "$it credit${if (it == 1) "" else "s"} left",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
             Row(
