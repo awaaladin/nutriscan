@@ -115,7 +115,7 @@ fun SettingsScreen(
             modifier = Modifier.clickable { context.openUrl(Legal.TERMS) },
             leadingContent = { Icon(Icons.Outlined.Gavel, contentDescription = null) },
             headlineContent = { Text("Terms of Use") },
-            supportingContent = { Text("Including subscriptions, credits and refunds") },
+            supportingContent = { Text("Including plans, credits and payments") },
         )
         HorizontalDivider()
         ListItem(

@@ -236,13 +236,14 @@ fun SubscriptionScreen(repository: NutriScanRepository, onBack: () -> Unit) {
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "You pay securely on Paystack's website with card, bank transfer or USSD. Plans are prepaid and do not " +
-                        "renew automatically. NutriScan gives general information, not medical advice.",
+                    "You pay securely on Paystack's website with card, bank transfer or USSD. Plans are prepaid, do not " +
+                        "renew automatically, and all payments are final (no refunds). NutriScan gives general information, " +
+                        "not medical advice.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Row {
-                    TextButton(onClick = { context.openUrl(Legal.TERMS) }) { Text("Terms and refunds") }
+                    TextButton(onClick = { context.openUrl(Legal.TERMS) }) { Text("Terms") }
                     TextButton(onClick = { context.openUrl(Legal.PRIVACY) }) { Text("Privacy") }
                 }
             }

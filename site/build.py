@@ -125,7 +125,7 @@ def page(slug, title, desc, body):
 def contact_block():
     if SUPPORT_EMAIL:
         return (f'<p><strong>Email:</strong> <a href="mailto:{SUPPORT_EMAIL}">{SUPPORT_EMAIL}</a><br>'
-                "For help, refunds (send your NUTRISCAN- payment reference) and privacy requests, including to our data "
+                "For help, payment questions (send your NUTRISCAN- payment reference) and privacy requests, including to our data "
                 "protection contact. We aim to reply within a few working days, and to privacy requests within 30 days.</p>")
     return ('<p><strong>Email:</strong> our public support address is being set up for the public launch. Until then, beta testers '
             "can reach the team through whoever shared the app with them.</p>")
