@@ -19,7 +19,7 @@ import illustrations  # noqa: E402
 SITE = "https://nutriscan-download.vercel.app"
 # Public support address. Leave None until one has been chosen: the Contact page then says
 # so honestly instead of showing a made-up address.
-SUPPORT_EMAIL = None
+SUPPORT_EMAIL = "hiexecontact@gmail.com"
 
 NAV = [("index", "Home"), ("how-it-works", "How it works"), ("features", "Features"), ("our-data", "Our data & AI"),
        ("safety", "Safety"), ("about", "About"), ("contact", "Contact")]
@@ -125,7 +125,8 @@ def page(slug, title, desc, body):
 def contact_block():
     if SUPPORT_EMAIL:
         return (f'<p><strong>Email:</strong> <a href="mailto:{SUPPORT_EMAIL}">{SUPPORT_EMAIL}</a><br>'
-                "We aim to reply within a few working days.</p>")
+                "For help, refunds (send your NUTRISCAN- payment reference) and privacy requests, including to our data "
+                "protection contact. We aim to reply within a few working days, and to privacy requests within 30 days.</p>")
     return ('<p><strong>Email:</strong> our public support address is being set up for the public launch. Until then, beta testers '
             "can reach the team through whoever shared the app with them.</p>")
 
