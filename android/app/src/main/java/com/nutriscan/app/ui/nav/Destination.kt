@@ -68,6 +68,7 @@ sealed class Destination(val route: String) {
     data object History : Destination("history")
     data object Profile : Destination("profile")
     data object Subscription : Destination("subscription")
+    data object Health : Destination("health")
     data object Settings : Destination("settings")
     data object Achievements : Destination("achievements")
     data object Insights : Destination("insights")

@@ -288,25 +288,34 @@ private fun SummaryCard(kind: String, s: HealthSummary) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
     ) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            when (kind) {
-                "weight" -> s.weight?.let { w ->
+            val w = s.weight
+            val b = s.blood_pressure
+            val g = s.glucose
+            when {
+                kind == "weight" && w != null -> {
                     Big("${w.latest_kg} kg")
                     Text("${signed(w.change_kg)} kg in the last 30 days")
-                    w.bmi?.let { Text("BMI $it (healthy range 18.5–24.9)") }
-                    w.to_target_kg?.let { Text(if (it > 0) "$it kg to your goal of ${w.target_kg} kg" else "You've reached your goal of ${w.target_kg} kg") }
-                } ?: Text("Log your weight to see your trend.")
-                "blood_pressure" -> s.blood_pressure?.let { b ->
+                    if (w.bmi != null) Text("BMI ${w.bmi} (healthy range 18.5–24.9)")
+                    val left = w.to_target_kg
+                    if (left != null) {
+                        Text(if (left > 0) "$left kg to your goal of ${w.target_kg} kg" else "You've reached your goal of ${w.target_kg} kg")
+                    }
+                }
+                kind == "weight" -> Text("Log your weight to see your trend.")
+                kind == "blood_pressure" && b != null -> {
                     Big(b.latest)
                     Text("7-day average ${b.avg_7d}")
                     Text("${b.in_target_pct}% of readings ${b.target}")
-                } ?: Text("Log a reading to see your trend. Target for most adults: under 130/80.")
-                else -> s.glucose?.let { g ->
+                }
+                kind == "blood_pressure" -> Text("Log a reading to see your trend. Target for most adults: under 130/80.")
+                g != null -> {
                     Big("${g.latest_mg_dl.toInt()} mg/dL")
-                    g.avg_fasting_mg_dl?.let { Text("Average fasting: ${it.toInt()} mg/dL") }
-                    g.avg_after_meal_mg_dl?.let { Text("Average after meals: ${it.toInt()} mg/dL") }
+                    if (g.avg_fasting_mg_dl != null) Text("Average fasting: ${g.avg_fasting_mg_dl.toInt()} mg/dL")
+                    if (g.avg_after_meal_mg_dl != null) Text("Average after meals: ${g.avg_after_meal_mg_dl.toInt()} mg/dL")
                     Text("${g.in_target_pct}% in target (${g.target})")
                     if (g.lows > 0) Text("${g.lows} low reading(s) under 70 mg/dL. Tell your doctor.", fontWeight = FontWeight.Bold)
-                } ?: Text("Log a reading to see your trend. Targets for most adults: 80–130 mg/dL fasting, under 180 after meals.")
+                }
+                else -> Text("Log a reading to see your trend. Targets for most adults: 80–130 mg/dL fasting, under 180 after meals.")
             }
         }
     }

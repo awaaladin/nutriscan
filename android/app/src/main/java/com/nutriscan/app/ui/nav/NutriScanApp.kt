@@ -20,6 +20,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -31,6 +32,8 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.nutriscan.app.data.model.PreferencesUpdateRequest
+import com.nutriscan.app.data.repository.NutriScanRepository
 import com.nutriscan.app.di.AppContainer
 import com.nutriscan.app.ui.MainViewModel
 import com.nutriscan.app.ui.ScanUiState
@@ -41,7 +44,9 @@ import com.nutriscan.app.ui.screens.ChatScreen
 import com.nutriscan.app.ui.screens.ChatThreadsScreen
 import com.nutriscan.app.ui.screens.DisputeScreen
 import com.nutriscan.app.ui.screens.AnalyzingScreen
+import com.nutriscan.app.ui.components.ConsentDialog
 import com.nutriscan.app.ui.screens.HealthAnalysisScreen
+import com.nutriscan.app.ui.screens.HealthScreen
 import com.nutriscan.app.ui.screens.HistoryScreen
 import com.nutriscan.app.ui.screens.HomeScreen
 import com.nutriscan.app.ui.screens.InsightsScreen
@@ -61,6 +66,7 @@ import com.nutriscan.app.ui.screens.SplashScreen
 import com.nutriscan.app.ui.screens.SubmitProductScreen
 import com.nutriscan.app.ui.screens.SubscriptionScreen
 import com.nutriscan.app.ui.theme.NutriScanTheme
+import kotlinx.coroutines.launch
 
 private fun forwardEnter(): EnterTransition =
     slideInHorizontally(animationSpec = tween(320)) { it / 4 } + fadeIn(tween(320))
@@ -158,6 +164,12 @@ fun NutriScanApp() {
                 )
             }
             animatedComposable(Destination.Home.route) {
+                ConsentGate(
+                    repository = repository,
+                    onLoggedOut = {
+                        navController.navigate(Destination.Onboarding.route) { popUpTo(0) { inclusive = true } }
+                    },
+                )
                 HomeScreen(
                     repository = repository,
                     onScan = {
@@ -173,6 +185,7 @@ fun NutriScanApp() {
                     onOpenAlerts = { navController.navigate(Destination.Alerts.route) },
                     onOpenAssistant = { navController.navigate(Destination.Chat.build()) },
                     onOpenSearch = { navController.navigate(Destination.Search.route) },
+                    onOpenHealth = { navController.navigate(Destination.Health.route) },
                 )
             }
             animatedComposable(Destination.Scanner.route) {
@@ -307,6 +320,7 @@ fun NutriScanApp() {
                     threadId = threadId,
                     onBack = { navController.popBackStack() },
                     onOpenThreads = { navController.navigate(Destination.ChatThreads.route) },
+                    onOpenPlans = { navController.navigate(Destination.Subscription.route) },
                 )
             }
             animatedComposable(Destination.ChatThreads.route) {
@@ -386,6 +400,13 @@ fun NutriScanApp() {
             animatedComposable(Destination.Subscription.route) {
                 SubscriptionScreen(repository = repository, onBack = { navController.popBackStack() })
             }
+            animatedComposable(Destination.Health.route) {
+                HealthScreen(
+                    repository = repository,
+                    onBack = { navController.popBackStack() },
+                    onOpenPlans = { navController.navigate(Destination.Subscription.route) },
+                )
+            }
             animatedComposable(Destination.Settings.route) {
                 SettingsScreen(
                     repository = repository,
@@ -406,5 +427,28 @@ fun NutriScanApp() {
             }
         }
         }
+    }
+}
+
+/** Accounts created before consent was recorded agree once, here, before using the app. */
+@Composable
+private fun ConsentGate(repository: NutriScanRepository, onLoggedOut: () -> Unit) {
+    val scope = rememberCoroutineScope()
+    var needsConsent by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        repository.getPreferences().onSuccess {
+            needsConsent = it.terms_accepted_at == null || it.health_consent_at == null
+        }
+    }
+    if (needsConsent) {
+        ConsentDialog(
+            onAgree = {
+                scope.launch {
+                    repository.updatePreferences(PreferencesUpdateRequest(accept_terms = true, health_consent = true))
+                        .onSuccess { needsConsent = false }
+                }
+            },
+            onLogOut = { scope.launch { repository.logout(); onLoggedOut() } },
+        )
     }
 }

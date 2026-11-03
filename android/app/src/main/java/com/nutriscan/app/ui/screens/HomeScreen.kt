@@ -63,6 +63,7 @@ fun HomeScreen(
     onOpenAlerts: () -> Unit,
     onOpenAssistant: () -> Unit,
     onOpenSearch: () -> Unit,
+    onOpenHealth: () -> Unit = {},
 ) {
     val recentScans by repository.observeCachedScans().collectAsState(initial = emptyList())
 
@@ -164,7 +165,13 @@ fun HomeScreen(
                 )
                 Spacer(Modifier.height(8.dp))
                 NsOutlinedButton(
-                    text = "Upgrade to Pro",
+                    text = "My health: weight, blood pressure, blood sugar",
+                    onClick = onOpenHealth,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(8.dp))
+                NsOutlinedButton(
+                    text = "NutriScan Pro plans",
                     onClick = onOpenSubscription,
                     modifier = Modifier.fillMaxWidth(),
                 )

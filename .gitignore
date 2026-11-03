@@ -29,3 +29,6 @@ android/**/*.keystore
 
 .vercel
 .env*
+
+# APKs downloaded from GitHub Actions
+apk-output/
